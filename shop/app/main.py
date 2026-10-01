@@ -23,3 +23,10 @@ def version():
 @app.get("/products/{product_id}")
 def get_product(product_id: int):
     return PRODUCTS.get(product_id)
+
+@app.get("/products")
+def list_products(limit: int = 10, max_price: int | None = None):
+    items = list(PRODUCTS.values())
+    if max_price is not None:
+        items = [p for p in items if p["price"] <= max_price]
+    return items[:limit]
