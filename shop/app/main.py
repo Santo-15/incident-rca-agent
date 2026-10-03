@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.schemas import Product
 
 app = FastAPI(title="shop-api")
 
@@ -24,7 +25,7 @@ def version():
 def get_product(product_id: int):
     return PRODUCTS.get(product_id)
 
-@app.get("/products")
+@app.get("/products", response_model=list[Product])
 def list_products(limit: int = 10, max_price: int | None = None):
     items = list(PRODUCTS.values())
     if max_price is not None:
