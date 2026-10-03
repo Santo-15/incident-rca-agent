@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from typing import Literal
+from fastapi import FastAPI, Query
 from app.schemas import Product
 
 app = FastAPI(title="shop-api")
@@ -26,8 +27,17 @@ def get_product(product_id: int):
     return PRODUCTS.get(product_id)
 
 @app.get("/products", response_model=list[Product])
-def list_products(limit: int = 10, max_price: int | None = None):
+def list_products(
+    limit: int = Query(default=10, ge=1, le=100),
+    max_price: int | None = Query(default=None, ge=0),
+    sort: Literal["name", "price"] | None =None,
+    order: Literal["asc", "desc"] = "asc",
+):
     items = list(PRODUCTS.values())
     if max_price is not None:
-        items = [p for p in items if p["price"] <= max_price]
+        items=[p for p in items if p["price"]<= max_price]
+
+    if sort is not None:
+        items = sorted(items, key=lambda p: p[sort], reverse=(order == "desc"))
+
     return items[:limit]
