@@ -1,6 +1,6 @@
 from typing import Literal
-from fastapi import FastAPI, Query
-from app.schemas import Product
+from fastapi import FastAPI, Query, HTTPException
+from app.schemas import Product, CartItemIn, CartOut
 
 app = FastAPI(title="shop-api")
 
@@ -9,7 +9,7 @@ PRODUCTS = {
     2: {"id": 2, "name": "Jeans", "price": 1299},
     3: {"id": 3, "name": "Cap", "price": 299},
 }
-
+CARTS: dict[int, dict[int, int]] ={}  #{user_id: {product_id: qty}}
 @app.get("/")
 def root():
     return {"message": "Hello from shop-api"}
@@ -41,3 +41,25 @@ def list_products(
         items = sorted(items, key=lambda p: p[sort], reverse=(order == "desc"))
 
     return items[:limit]
+
+def build_cart(user_id: int) -> dict:
+    cart = CARTS.get(user_id, {})
+    items = []
+    for product_id, qty in cart.items():
+        product = PRODUCTS[product_id]
+        items.append({
+            "product_id": product_id,
+            "name": product["name"],
+            "price": product["price"],
+            "qty": qty,
+        })
+    total = sum(item["price"] * item["qty"] for item in items)
+    return {"user_id": user_id, "items": items, "total": total}
+
+@app.post("/users/{user_id}/cart", response_model=CartOut)
+def add_to_cart(user_id: int, item: CartItemIn):
+    if item.product_id not in PRODUCTS:
+        raise HTTPException (status_code=404, detail="Product not found")
+    cart = CARTS.setdefault(user_id, {})
+    cart[item.product_id] = cart.get(item.product_id, 0) + item.qty
+    return build_cart(user_id)
