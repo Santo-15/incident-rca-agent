@@ -1,6 +1,6 @@
 from typing import Literal
 from fastapi import FastAPI, Query, HTTPException
-from app.schemas import Product, CartItemIn, CartOut
+from app.schemas import Product, CartItemIn, CartOut, CheckoutOut
 
 app = FastAPI(title="shop-api")
 
@@ -10,6 +10,8 @@ PRODUCTS = {
     3: {"id": 3, "name": "Cap", "price": 299},
 }
 CARTS: dict[int, dict[int, int]] ={}  #{user_id: {product_id: qty}}
+
+ORDERS: dict[int, dict] = {}
 @app.get("/")
 def root():
     return {"message": "Hello from shop-api"}
@@ -63,3 +65,24 @@ def add_to_cart(user_id: int, item: CartItemIn):
     cart = CARTS.setdefault(user_id, {})
     cart[item.product_id] = cart.get(item.product_id, 0) + item.qty
     return build_cart(user_id)
+
+@app.post(
+    "/users/{user_id}/checkout",
+    response_model=CheckoutOut,
+    status_code=201,
+)
+def checkout(user_id: int):
+    cart = CARTS.get(user_id, {})
+    total = 0
+    for product_id, qty in cart.items():
+        price = PRODUCTS[product_id]["price"]
+        total += price*qty
+    order_id = len(ORDERS) + 1
+    ORDERS[order_id] = {
+        "user_id": user_id,
+        "items": dict(cart),
+        "total": total,
+    }
+    CARTS[user_id] = {}
+    return {"order_id": order_id, "user_id": user_id, "total": total}
+    
