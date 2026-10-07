@@ -24,9 +24,15 @@ def health():
 def version():
     return {"version": "0.1.0"}
 
-@app.get("/products/{product_id}")
+@app.get("/products/{product_id}", response_model=Product)
 def get_product(product_id: int):
+    if product_id not in PRODUCTS:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Product {product_id} not found",
+        )
     return PRODUCTS.get(product_id)
+
 
 @app.get("/products", response_model=list[Product])
 def list_products(
@@ -61,7 +67,7 @@ def build_cart(user_id: int) -> dict:
 @app.post("/users/{user_id}/cart", response_model=CartOut)
 def add_to_cart(user_id: int, item: CartItemIn):
     if item.product_id not in PRODUCTS:
-        raise HTTPException (status_code=404, detail="Product not found")
+        raise HTTPException (status_code=404, detail=f"Product {item.product_id} not found")
     cart = CARTS.setdefault(user_id, {})
     cart[item.product_id] = cart.get(item.product_id, 0) + item.qty
     return build_cart(user_id)
@@ -73,6 +79,11 @@ def add_to_cart(user_id: int, item: CartItemIn):
 )
 def checkout(user_id: int):
     cart = CARTS.get(user_id, {})
+    if not cart:
+        raise HTTPException(
+            status_code=400,
+            detail="Cart is empty",
+        )
     total = 0
     for product_id, qty in cart.items():
         price = PRODUCTS[product_id]["price"]
