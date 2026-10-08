@@ -1,0 +1,3 @@
+-r requirements.txt     # NEW  include the app's own packages first
+pytest==<9.1.1>       # NEW  test runner
+httpx==<0.28.1>        # NEW  HTTP library TestClient uses internally
