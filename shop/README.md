@@ -37,3 +37,13 @@ curl -i http://127.0.0.1:8000/health
 curl -i "http://127.0.0.1:8000/products?max_price=500&limit=1"
 curl -i http://127.0.0.1:8000/products/abc   # expect 422
 ```
+
+## Run Postgres locally
+
+docker run -d --name shop-db \
+  -e POSTGRES_USER=shop -e POSTGRES_PASSWORD=shop -e POSTGRES_DB=shop \
+  -p 5432:5432 -v shop-pgdata:/var/lib/postgresql/data postgres:16
+
+Open psql: `docker exec -it shop-db psql -U shop -d shop`
+Stop / start: `docker stop shop-db` / `docker start shop-db`
+
