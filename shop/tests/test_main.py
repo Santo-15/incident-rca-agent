@@ -1,14 +1,47 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, select  
+from sqlalchemy.orm import sessionmaker  
+from app.db import Base, get_db 
+from app.main import app
+from app import models  
 
-from app.main import app, CARTS, ORDERS
+TEST_DB_URL = "postgresql+psycopg://shop:shop@localhost:5432/shop_test"  
+test_engine = create_engine(TEST_DB_URL)  
+TestSession = sessionmaker(bind=test_engine) 
 
+
+def override_get_db():  
+    with TestSession() as session:
+        yield session
+
+
+app.dependency_overrides[get_db] = override_get_db  
 client = TestClient(app)
 
 @pytest.fixture(autouse=True)
-def reset_store():
-    CARTS.clear()
-    ORDERS.clear()
+def reset_store():  
+    Base.metadata.drop_all(test_engine)  
+    Base.metadata.create_all(test_engine)  
+    with TestSession() as s: 
+        s.add_all([
+            models.Product(id=1, name="T-shirt", price=499),
+            models.Product(id=2, name="Jeans", price=1299),
+            models.Product(id=3, name="Cap", price=299),
+        ])
+        s.commit()
+
+
+def cart_rows(user_id):  
+    with TestSession() as s:
+        rows = s.scalars(select(models.CartItem).where(models.CartItem.user_id == user_id))
+        return {r.product_id: r.qty for r in rows}
+
+
+def order_count(): 
+    with TestSession() as s:
+        return len(s.scalars(select(models.Order)).all())
+
 
 def test_list_products():
     r = client.get("/products")
@@ -26,35 +59,35 @@ def test_sort_by_price_desc():
 
 def test_bad_sort_gives_422():
     r = client.get("/products", params={"sort": "colour"})
-    assert r.status_code == 422  
+    assert r.status_code == 422
 
 def test_add_to_cart():
-    r = client.post("/users/7/cart", json={"product_id": 2, "qty": 3})   # NEW  json= sends the body + Content-Type header
-    assert r.status_code == 200                          # NEW  cart changed, nothing created -> 200
-    assert CARTS[7] == {2: 3}   
-    
+    r = client.post("/users/7/cart", json={"product_id": 2, "qty": 3})
+    assert r.status_code == 200
+    assert cart_rows(7) == {2: 3}  
+
 def test_missing_product_gives_404():
     r = client.get("/products/99")
-    assert r.status_code == 404                          # NEW  Step 6 fix: not 200 + null any more
-    assert r.json() == {"detail": "Product 99 not found"}                           # NEW  user 7's cart now holds 3 Jeans
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Product 99 not found"}
 
 def test_add_unknown_product_gives_404():
     r = client.post("/users/7/cart", json={"product_id": 99, "qty": 1})
-    assert r.status_code == 404                          # NEW  we don't sell product 99
-    assert CARTS == {}     
+    assert r.status_code == 404
+    assert cart_rows(7) == {} 
 
 def test_add_qty_zero_gives_422():
     r = client.post("/users/7/cart", json={"product_id": 2, "qty": 0})
-    assert r.status_code == 422 
+    assert r.status_code == 422
 
 def test_checkout_creates_order():
-    client.post("/users/7/cart", json={"product_id": 2, "qty": 3})       # NEW  setup: put 3 Jeans in the cart
+    client.post("/users/7/cart", json={"product_id": 2, "qty": 3})
     r = client.post("/users/7/checkout")
-    assert r.status_code == 201                          # NEW  new order created -> 201
-    assert r.json() == {"order_id": 1, "user_id": 7, "total": 3897}       # NEW  1299 * 3, id 1 thanks to the fixture
-    assert CARTS[7] == {}  
+    assert r.status_code == 201
+    assert r.json() == {"order_id": 1, "user_id": 7, "total": 3897}
+    assert cart_rows(7) == {}  
 
 def test_checkout_empty_cart_gives_400():
-    r = client.post("/users/8/checkout")                 # NEW  user 8 never added anything
-    assert r.status_code == 400                          # NEW  Step 6 fix: not a 201 ₹0 order
-    assert ORDERS == {}  
+    r = client.post("/users/8/checkout")
+    assert r.status_code == 400
+    assert order_count() == 0  
