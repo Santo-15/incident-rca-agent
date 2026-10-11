@@ -7,7 +7,7 @@ class Product(Base):
     __tablename__ = "products"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    price: Mapped[int]
+    price: Mapped[int] = mapped_column(index=True)
 
 class CartItem(Base):
     __tablename__ = "cart_items"
