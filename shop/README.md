@@ -47,3 +47,10 @@ docker run -d --name shop-db \
 Open psql: `docker exec -it shop-db psql -U shop -d shop`
 Stop / start: `docker stop shop-db` / `docker start shop-db`
 
+## Seed the database
+Run from `shop/` (stop uvicorn first when using `--reset`):
+
+```bash
+python seed.py                         # create tables + 3 base products (only if products is empty)
+python seed.py --reset --extra 200000  # wipe everything, 3 base products + 200k fillers (for slow_query tests)
+```
