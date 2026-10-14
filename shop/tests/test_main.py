@@ -1,8 +1,10 @@
 import pytest
+import redis
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select  
 from sqlalchemy.orm import sessionmaker  
-from app.db import Base, get_db 
+from app.db import Base, get_db
+from app.cache import get_redis
 from app.main import app
 from app import models  
 
@@ -10,17 +12,21 @@ TEST_DB_URL = "postgresql+psycopg://shop:shop@localhost:5432/shop_test"
 test_engine = create_engine(TEST_DB_URL)  
 TestSession = sessionmaker(bind=test_engine) 
 
+TEST_REDIS_URL = "redis://localhost:6379/15"
+test_redis = redis.Redis.from_url(TEST_REDIS_URL, decode_responses=True)
 
 def override_get_db():  
     with TestSession() as session:
         yield session
 
 
-app.dependency_overrides[get_db] = override_get_db  
+app.dependency_overrides[get_db] = override_get_db 
+app.dependency_overrides[get_redis] = lambda: test_redis
 client = TestClient(app)
 
 @pytest.fixture(autouse=True)
-def reset_store():  
+def reset_store():
+    test_redis.flushdb()  
     Base.metadata.drop_all(test_engine)  
     Base.metadata.create_all(test_engine)  
     with TestSession() as s: 
@@ -33,9 +39,8 @@ def reset_store():
 
 
 def cart_rows(user_id):  
-    with TestSession() as s:
-        rows = s.scalars(select(models.CartItem).where(models.CartItem.user_id == user_id))
-        return {r.product_id: r.qty for r in rows}
+    raw = test_redis.hgetall(f"cart:{user_id}")  
+    return {int(k): int(v) for k, v in raw.items()}
 
 
 def order_count(): 
@@ -91,3 +96,7 @@ def test_checkout_empty_cart_gives_400():
     r = client.post("/users/8/checkout")
     assert r.status_code == 400
     assert order_count() == 0  
+
+def test_cart_has_ttl():  
+    client.post("/users/7/cart", json={"product_id": 2, "qty": 1})  
+    assert 0 < test_redis.ttl("cart:7") <= 86400

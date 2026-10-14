@@ -12,17 +12,28 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data   
 
+  redis:                            # NEW  DNS name redis; holds carts
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]   # AOF on: carts survive restarts
+    ports:
+      - "127.0.0.1:6379:6379"      
+    volumes:
+      - redisdata:/data
+
   shop-api:
     build: ./shop
     image: shop-api:dev
     environment:
       DATABASE_URL: postgresql+psycopg://shop:shop@postgres:5432/shop
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
       - postgres
+      - redis
 
 volumes:
   pgdata:                           
     external: true                  
     name: shop-pgdata 
+  redisdata: {}
