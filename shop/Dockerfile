@@ -4,7 +4,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
 COPY . .
 RUN useradd --create-home appuser
 USER appuser
