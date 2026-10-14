@@ -54,25 +54,16 @@ Run from `shop/` (stop uvicorn first when using `--reset`):
 python seed.py                         # create tables + 3 base products (only if products is empty)
 python seed.py --reset --extra 200000  # wipe everything, 3 base products + 200k fillers (for slow_query tests)
 ```
-## Run with Docker (Phase 4, before Compose)
+## Run with Docker Compose
+
+From the repo root:
 
 ```bash
-# one-time: private network so containers find each other by name
-docker network create shopnet
-
-# Postgres: data in volume shop-pgdata, door only on this machine (127.0.0.1)
-docker run -d --name shop-db --network shopnet -p 127.0.0.1:5432:5432 \
-  -e POSTGRES_USER=shop -e POSTGRES_PASSWORD=shop -e POSTGRES_DB=shop \
-  -v shop-pgdata:/var/lib/postgresql/data postgres:16
-
-# build the API image from shop/
-docker build -t shop-api:dev ./shop
-
-# API: reaches Postgres by name shop-db:5432; door only on this machine
-docker run -d --name shop-api --network shopnet -p 127.0.0.1:8000:8000 \
-  -e DATABASE_URL=postgresql+psycopg://shop:shop@shop-db:5432/shop shop-api:dev
+docker compose up -d --build   # build shop-api, start postgres + shop-api
+docker compose ps              # status
+docker compose logs -f shop-api
+docker compose down            # stop and remove containers (data in shop-pgdata is kept)
 ```
 
-- Containers talk by name on `shopnet` and need no `-p` for that.
-- `-p 127.0.0.1:...` lets only programs on this machine (curl, seed.py, pytest) in.
-- Never publish Postgres without `127.0.0.1:` on a cloud VM.
+- Postgres data lives in the existing volume `shop-pgdata` (marked `external` in docker-compose.yml, so `down -v` never deletes it).
+- Ports are published on `127.0.0.1` only: API on 8000, Postgres on 5432 (for seed.py and pytest).
