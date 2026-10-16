@@ -1,3 +1,5 @@
+import logging
+import os
 from typing import Literal
 import redis
 from fastapi import Depends, FastAPI, Query, HTTPException  
@@ -8,6 +10,12 @@ from app.cache import get_redis, CART_TTL_SECONDS
 from app import models 
 from app.schemas import Product, CartItemIn, CartOut, CheckoutOut
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger("shop")
 app = FastAPI(title="shop-api")
 
 # REMOVED  PRODUCTS, CARTS and ORDERS dicts: the data now lives in Postgres tables
@@ -27,7 +35,8 @@ def version():
 @app.get("/products/{product_id}", response_model=Product)
 def get_product(product_id: int, db: Session = Depends(get_db)):  
     product = db.get(models.Product, product_id)  
-    if product is None:  
+    if product is None:
+        logger.info("product not found product_id=%s", product_id)  
         raise HTTPException(
             status_code=404,
             detail=f"Product {product_id} not found",
@@ -73,13 +82,15 @@ def build_cart(db: Session, r: redis.Redis, user_id: int) -> dict:
 
 @app.post("/users/{user_id}/cart", response_model=CartOut)
 def add_to_cart(user_id: int, item: CartItemIn, db: Session = Depends(get_db), r: redis.Redis = Depends(get_redis)):  
-    if db.get(models.Product, item.product_id) is None:  
+    if db.get(models.Product, item.product_id) is None:
+        logger.info("product not found product_id=%s user_id=%s", item.product_id, user_id)  
         raise HTTPException (status_code=404, detail=f"Product {item.product_id} not found")
     key = cart_key(user_id)
     pipe = r.pipeline()                              # send both commands together
     pipe.hincrby(key, item.product_id, item.qty)     # add qty to this product's line
     pipe.expire(key, CART_TTL_SECONDS)               # restart the 24 h expiry
     pipe.execute()
+    logger.debug("cart updated key=%s product_id=%s qty_added=%s", key, item.product_id, item.qty)
     return build_cart(db, r, user_id)  
 
 @app.post(
@@ -94,6 +105,7 @@ def checkout(user_id: int, db: Session = Depends(get_db), r: redis.Redis = Depen
     if qty_by_id:
         products = db.scalars(select(models.Product).where(models.Product.id.in_(list(qty_by_id)))).all()
     if not products:
+        logger.info("checkout rejected cart empty user_id=%s", user_id)   
         raise HTTPException(status_code=400, detail="Cart is empty")
     total = sum(p.price * qty_by_id[p.id] for p in products) 
     order = models.Order(user_id=user_id, total=total)  
@@ -103,4 +115,5 @@ def checkout(user_id: int, db: Session = Depends(get_db), r: redis.Redis = Depen
           db.add(models.OrderItem(order_id=order.id, product_id=p.id, qty=qty_by_id[p.id], unit_price=p.price))  
     db.commit()
     r.delete(key)
+    logger.info("order created order_id=%s user_id=%s total=%s", order.id, user_id, total)   
     return {"order_id": order.id, "user_id": user_id, "total": total} 
