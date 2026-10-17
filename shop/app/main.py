@@ -1,22 +1,49 @@
 import logging
 import os
+import re
+import time
+import uuid
 from typing import Literal
 import redis
-from fastapi import Depends, FastAPI, Query, HTTPException  
+from fastapi import Depends, FastAPI, Query, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import select  
 from sqlalchemy.orm import Session  
 from app.db import get_db 
 from app.cache import get_redis, CART_TTL_SECONDS
 from app import models 
 from app.schemas import Product, CartItemIn, CartOut, CheckoutOut
+from app.logging_setup import setup_logging, request_id_var
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=LOG_LEVEL,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
-)
+setup_logging(LOG_LEVEL)
 logger = logging.getLogger("shop")
+
 app = FastAPI(title="shop-api")
+
+REQUEST_ID_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
+
+@app.middleware("http")                               
+async def request_context(request: Request, call_next):  
+    incoming = request.headers.get("X-Request-ID", "")   
+    request_id = incoming if REQUEST_ID_RE.fullmatch(incoming) else uuid.uuid4().hex  
+    token = request_id_var.set(request_id)           
+    start = time.perf_counter()                       
+    fields = {"method": request.method, "path": request.url.path}  
+    try:                                              
+        response = await call_next(request)           
+    except Exception as exc:                         
+        fields.update(status=500, duration_ms=round((time.perf_counter() - start) * 1000, 1), error=f"{type(exc).__name__}: {exc}")  
+        logger.error("request failed", exc_info=True, extra=fields)  
+        response = JSONResponse(status_code=500, content={"detail": "Internal Server Error"})  
+    else:                                             
+        fields.update(status=response.status_code, duration_ms=round((time.perf_counter() - start) * 1000, 1))  
+        level = logging.DEBUG if request.url.path == "/health" else logging.INFO  
+        logger.log(level, "request done", extra=fields)  
+    finally:                                          
+        request_id_var.reset(token)                   
+    response.headers["X-Request-ID"] = request_id     
+    return response                                   
 
 # REMOVED  PRODUCTS, CARTS and ORDERS dicts: the data now lives in Postgres tables
 
@@ -36,7 +63,7 @@ def version():
 def get_product(product_id: int, db: Session = Depends(get_db)):  
     product = db.get(models.Product, product_id)  
     if product is None:
-        logger.info("product not found product_id=%s", product_id)  
+        logger.info("product not found", extra={"product_id": product_id}) 
         raise HTTPException(
             status_code=404,
             detail=f"Product {product_id} not found",
@@ -83,14 +110,14 @@ def build_cart(db: Session, r: redis.Redis, user_id: int) -> dict:
 @app.post("/users/{user_id}/cart", response_model=CartOut)
 def add_to_cart(user_id: int, item: CartItemIn, db: Session = Depends(get_db), r: redis.Redis = Depends(get_redis)):  
     if db.get(models.Product, item.product_id) is None:
-        logger.info("product not found product_id=%s user_id=%s", item.product_id, user_id)  
+        logger.info("product not found", extra={"product_id": item.product_id, "user_id": user_id})  
         raise HTTPException (status_code=404, detail=f"Product {item.product_id} not found")
     key = cart_key(user_id)
     pipe = r.pipeline()                              # send both commands together
     pipe.hincrby(key, item.product_id, item.qty)     # add qty to this product's line
     pipe.expire(key, CART_TTL_SECONDS)               # restart the 24 h expiry
     pipe.execute()
-    logger.debug("cart updated key=%s product_id=%s qty_added=%s", key, item.product_id, item.qty)
+    logger.debug("cart updated", extra={"redis_key": key, "product_id": item.product_id, "qty_added": item.qty})
     return build_cart(db, r, user_id)  
 
 @app.post(
@@ -105,7 +132,7 @@ def checkout(user_id: int, db: Session = Depends(get_db), r: redis.Redis = Depen
     if qty_by_id:
         products = db.scalars(select(models.Product).where(models.Product.id.in_(list(qty_by_id)))).all()
     if not products:
-        logger.info("checkout rejected cart empty user_id=%s", user_id)   
+        logger.info("checkout rejected cart empty", extra={"user_id": user_id})  
         raise HTTPException(status_code=400, detail="Cart is empty")
     total = sum(p.price * qty_by_id[p.id] for p in products) 
     order = models.Order(user_id=user_id, total=total)  
@@ -115,5 +142,5 @@ def checkout(user_id: int, db: Session = Depends(get_db), r: redis.Redis = Depen
           db.add(models.OrderItem(order_id=order.id, product_id=p.id, qty=qty_by_id[p.id], unit_price=p.price))  
     db.commit()
     r.delete(key)
-    logger.info("order created order_id=%s user_id=%s total=%s", order.id, user_id, total)   
+    logger.info("order created", extra={"order_id": order.id, "user_id": user_id, "total": total})   
     return {"order_id": order.id, "user_id": user_id, "total": total} 
