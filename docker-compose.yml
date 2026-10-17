@@ -60,6 +60,27 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  locust:                                        
+    image: locustio/locust:2.46.7                
+    volumes:
+      - ./traffic:/mnt/locust:ro                
+    command:                                     
+      - "-f"                                     
+      - "/mnt/locust/locustfile.py"             
+      - "--host"                                 
+      - "http://shop-api:8000"                   
+      - "--autostart"                            
+      - "-u"                                     
+      - "${LOCUST_USERS:-10}"                    
+      - "-r"                                     
+      - "${LOCUST_SPAWN_RATE:-2}"                
+    ports:
+      - "127.0.0.1:8089:8089"                    
+    depends_on:
+      shop-api:
+        condition: service_healthy               
+    restart: unless-stopped
+
 volumes:
   pgdata:                           
     external: true                  
