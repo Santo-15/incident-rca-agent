@@ -6,7 +6,7 @@ How we see inside the shop. The RCA agent reads the same signals a human on-call
 
 | Signal | Tool | Source in our stack | Answers |
 |---|---|---|---|
-| Metrics | Prometheus | shop-api `/metrics`, postgres-exporter, redis-exporter, cAdvisor | Is something wrong? How bad? Since when? |
+| Metrics | Prometheus | shop-api `/metrics`, postgres-exporter, redis-exporterr | Is something wrong? How bad? Since when? |
 | Logs | Loki + Promtail | shop-api JSON logs (`request_id`, `duration_ms`, error) | What exactly happened? Why? |
 | Traces | not used | — | — |
 
@@ -23,5 +23,4 @@ How we see inside the shop. The RCA agent reads the same signals a human on-call
 | kill_db | 5xx rate up, postgres exporter shows DB down | ERROR "failed to resolve host 'postgres'" (verified in Phase 5) |
 | bad_pool_config | p95 latency up, DB connections stuck at pool size | ERROR pool timeout lines |
 | slow_query | p95 latency up on `GET /products`, no 5xx | high `duration_ms` on `/products` |
-| memory_leak | shop-api container memory keeps climbing (cAdvisor) | few or none until the container restarts |
 | redis_down | redis exporter shows Redis down, 5xx on cart/checkout | ERROR Redis connection lines |

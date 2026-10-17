@@ -98,6 +98,18 @@ services:
       interval: 10s                             
       timeout: 3s                                
       retries: 3                                 
+    restart: unless-stopped            
+
+  postgres-exporter:                            
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1   
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable   
+    restart: unless-stopped 
+
+  redis-exporter:                               
+    image: oliver006/redis_exporter:v1.92.1      
+    environment:
+      REDIS_ADDR: redis://redis:6379             
     restart: unless-stopped                      
 
 volumes:
