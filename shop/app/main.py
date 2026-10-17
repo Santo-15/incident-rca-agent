@@ -6,7 +6,7 @@ import uuid
 from typing import Literal
 import redis
 from fastapi import Depends, FastAPI, Query, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import select  
 from sqlalchemy.orm import Session  
 from app.db import get_db 
@@ -14,6 +14,8 @@ from app.cache import get_redis, CART_TTL_SECONDS
 from app import models 
 from app.schemas import Product, CartItemIn, CartOut, CheckoutOut
 from app.logging_setup import setup_logging, request_id_var
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from app.metrics import REQUESTS, LATENCY, IN_PROGRESS, route_label
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 setup_logging(LOG_LEVEL)
@@ -25,25 +27,35 @@ REQUEST_ID_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
 
 @app.middleware("http")                               
 async def request_context(request: Request, call_next):  
-    incoming = request.headers.get("X-Request-ID", "")   
+    incoming = request.headers.get("X-Request-ID", "")  
     request_id = incoming if REQUEST_ID_RE.fullmatch(incoming) else uuid.uuid4().hex  
-    token = request_id_var.set(request_id)           
-    start = time.perf_counter()                       
+    token = request_id_var.set(request_id)  
+    start = time.perf_counter() 
     fields = {"method": request.method, "path": request.url.path}  
-    try:                                              
-        response = await call_next(request)           
-    except Exception as exc:                         
+    IN_PROGRESS.inc() 
+    try:  
+        response = await call_next(request) 
+    except Exception as exc:  
         fields.update(status=500, duration_ms=round((time.perf_counter() - start) * 1000, 1), error=f"{type(exc).__name__}: {exc}")  
         logger.error("request failed", exc_info=True, extra=fields)  
         response = JSONResponse(status_code=500, content={"detail": "Internal Server Error"})  
-    else:                                             
+    else: 
         fields.update(status=response.status_code, duration_ms=round((time.perf_counter() - start) * 1000, 1))  
-        level = logging.DEBUG if request.url.path == "/health" else logging.INFO  
+        level = logging.DEBUG if request.url.path in ("/health", "/metrics") else logging.INFO  
         logger.log(level, "request done", extra=fields)  
-    finally:                                          
-        request_id_var.reset(token)                   
-    response.headers["X-Request-ID"] = request_id     
-    return response                                   
+    finally: 
+        request_id_var.reset(token)  
+        IN_PROGRESS.dec()  
+    if request.url.path != "/metrics":  
+        path = route_label(request)  
+        REQUESTS.labels(request.method, path, str(fields["status"])).inc()  
+        LATENCY.labels(request.method, path).observe(time.perf_counter() - start) 
+    response.headers["X-Request-ID"] = request_id  
+    return response  # send it back
+
+@app.get("/metrics", include_in_schema=False)  
+def metrics():  
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)                                
 
 # REMOVED  PRODUCTS, CARTS and ORDERS dicts: the data now lives in Postgres tables
 
