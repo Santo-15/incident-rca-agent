@@ -1,0 +1,14 @@
+groups:                                            
+  - name: shop-api-red                             # group name (Rate, Errors, Duration), shown on the Rules page
+    rules:                                         # rules in this group, evaluated every 15 s
+      # requests/second per endpoint, last 5 min
+      - record: path:http_requests:rate5m          
+        expr: sum by (path) (rate(http_requests_total[5m]))   
+
+      # share of requests that returned 5xx, 0 when there are none
+      - record: shop:http_requests_5xx:ratio_rate5m          
+        expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) or vector(0)) / sum(rate(http_requests_total[5m]))   
+
+      # p95 latency per endpoint in seconds, last 5 min
+      - record: path:http_request_duration_seconds:p95_5m    
+        expr: histogram_quantile(0.95, sum by (le, path) (rate(http_request_duration_seconds_bucket[5m])))   
