@@ -16,7 +16,7 @@ How we see inside the shop. The RCA agent reads the same signals a human on-call
 - Metric labels must have few possible values (endpoint, method, status). Never `user_id` or `order_id` (high cardinality). Those go in logs.
 - Alert on rates and p95 latency, not averages.
 
-## Expected evidence per chaos scenario (to verify in Phase 7)
+## Expected evidence per chaos scenario 
 
 | Scenario | Metric signal | Log signal |
 |---|---|---|
@@ -24,3 +24,13 @@ How we see inside the shop. The RCA agent reads the same signals a human on-call
 | bad_pool_config | p95 latency up, DB connections stuck at pool size | ERROR pool timeout lines |
 | slow_query | p95 latency up on `GET /products`, no 5xx | high `duration_ms` on `/products` |
 | redis_down | redis exporter shows Redis down, 5xx on cart/checkout | ERROR Redis connection lines |
+
+## Saved LogQL queries (used by Grafana and logs_agent)
+
+| Purpose | Query |
+|---|---|
+| Error lines (the why) | `{service="shop-api"} \|= "request failed" \| json \| line_format "{{.request_id}} {{.path}} {{.error}}"` |
+| One request's story | `{service="shop-api"} \|= "<request_id>"` |
+| Slow requests | `{service="shop-api"} \| json \| duration_ms > 1000` |
+| Top errors by message | `sum by (error) (count_over_time({service="shop-api"} \|= "request failed" \| json [10m]))` |
+| Dependency's own logs | `{service="postgres"}` or `{service="redis"}` |
