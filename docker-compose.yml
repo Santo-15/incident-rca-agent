@@ -111,7 +111,34 @@ services:
     image: oliver006/redis_exporter:v1.92.1      
     environment:
       REDIS_ADDR: redis://redis:6379             
+    restart: unless-stopped
+
+  loki:                                          
+    image: grafana/loki:3.7.8                    
+    command: ["-config.file=/etc/loki/loki-config.yaml"]   
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro   
+      - lokidata:/loki                          
+    ports:
+      - "127.0.0.1:3100:3100"                    
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-health"]  
+      interval: 10s                              
+      timeout: 3s                               
+      retries: 5                                 
+      start_period: 20s                          
     restart: unless-stopped                      
+
+  alloy:                                         
+    image: grafana/alloy:v1.20.1                 
+    command: ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345"]   # NEW: run our config; UI on 12345
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro   
+      - /var/run/docker.sock:/var/run/docker.sock:ro   
+      - alloydata:/var/lib/alloy/data            
+    ports:
+      - "127.0.0.1:12345:12345"                 
+    restart: unless-stopped                                         
 
 volumes:
   pgdata:                           
@@ -119,3 +146,5 @@ volumes:
     name: shop-pgdata 
   redisdata: {}
   promdata: {}
+  lokidata: {}
+  alloydata: {}

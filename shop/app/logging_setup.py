@@ -33,4 +33,4 @@ def setup_logging(level: str) -> None:
         uv = logging.getLogger(name)          
         uv.handlers = []                      
         uv.propagate = True                   
-    logging.getLogger("uvicorn.access").disabled
+    logging.getLogger("uvicorn.access").disabled = True
