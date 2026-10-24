@@ -160,6 +160,29 @@ services:
       retries: 5
       start_period: 20s                          
     restart: unless-stopped
+  alertmanager:                                 
+    image: prom/alertmanager:v0.34.1            
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"   
+      - "--storage.path=/alertmanager"           
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro   
+      - alertmanagerdata:/alertmanager           
+    ports:
+      - "127.0.0.1:9093:9093"                   
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]   
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  webhook-debug:                                 
+    image: python:3.14-slim                      
+    command: ["python", "-u", "/app/webhook_debug.py"]   
+    volumes:
+      - ./observability/alertmanager/webhook_debug.py:/app/webhook_debug.py:ro  
+    restart: unless-stopped                      
 volumes:
   pgdata:                           
     external: true                  
@@ -169,3 +192,4 @@ volumes:
   lokidata: {}
   alloydata: {}
   grafanadata: {}
+  alertmanagerdata: {} 

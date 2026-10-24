@@ -34,3 +34,14 @@ How we see inside the shop. The RCA agent reads the same signals a human on-call
 | Slow requests | `{service="shop-api"} \| json \| duration_ms > 1000` |
 | Top errors by message | `sum by (error) (count_over_time({service="shop-api"} \|= "request failed" \| json [10m]))` |
 | Dependency's own logs | `{service="postgres"}` or `{service="redis"}` |
+
+## Alerts
+Rules in `prometheus/rules/alerts.yml`, routing in `alertmanager/alertmanager.yml` (all alerts grouped into one webhook = one incident).
+
+| Alert | Fires when | Scenario |
+|---|---|---|
+| ShopApiDown | shop-api not scraped for 30 s | memory_leak (OOM kill) |
+| PostgresDown | pg_up = 0 for 30 s | kill_db |
+| RedisDown | redis_up = 0 for 30 s | redis_down |
+| ShopHigh5xxRatio | 5xx > 5% for 1 min | any outage |
+| ShopHighLatency | p95 > 1 s on a path for 2 min | slow_query, bad_pool_config |

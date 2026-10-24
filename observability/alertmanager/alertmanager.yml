@@ -1,0 +1,12 @@
+route:                                         
+  receiver: rca-agent                          
+  group_by: []                                 
+  group_wait: 30s                             
+  group_interval: 1m                           
+  repeat_interval: 4h                          
+
+receivers:
+  - name: rca-agent                            
+    webhook_configs:
+      - url: http://webhook-debug:8080/alerts  
+        send_resolved: true

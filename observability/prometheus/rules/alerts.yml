@@ -1,0 +1,47 @@
+groups:                                         
+  - name: shop-alerts                          
+    rules:                                    
+      - alert: ShopApiDown                      
+        expr: up{job="shop-api"} == 0           
+        for: 30s                                
+        labels:
+          severity: critical                    
+        annotations:
+          summary: "shop-api is not answering scrapes"                
+          description: "Prometheus could not scrape shop-api /metrics for 30 s."   
+
+      - alert: PostgresDown                     
+        expr: pg_up == 0                       
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Postgres is unreachable"
+          description: "postgres-exporter reports pg_up=0 for 30 s."
+
+      - alert: RedisDown                        
+        expr: redis_up == 0                     
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is unreachable"
+          description: "redis-exporter reports redis_up=0 for 30 s."
+
+      - alert: ShopHigh5xxRatio                 
+        expr: shop:http_requests_5xx:ratio_rate5m > 0.05   
+        for: 1m                                 
+        labels:
+          severity: critical
+        annotations:
+          summary: "More than 5% of requests fail with 5xx"
+          description: "5xx ratio is {{ $value | humanizePercentage }} over the last 5 minutes."   
+
+      - alert: ShopHighLatency                  
+        expr: path:http_request_duration_seconds:p95_5m{path!~"/health|unmatched"} > 1  
+        for: 2m                                
+        labels:
+          severity: warning                     
+        annotations:
+          summary: "p95 latency above 1 s on {{ $labels.path }}"   
+          description: "p95 is {{ $value | humanizeDuration }} over the last 5 minutes."
