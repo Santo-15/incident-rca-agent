@@ -139,7 +139,27 @@ services:
     ports:
       - "127.0.0.1:12345:12345"                 
     restart: unless-stopped                                         
-
+  grafana:                                      
+    image: grafana/grafana:13.2.4                
+    environment:
+      GF_SECURITY_ADMIN_USER: admin                                                        
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}   
+      GF_USERS_ALLOW_SIGN_UP: "false"            
+      GF_ANALYTICS_REPORTING_ENABLED: "false"    
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"    
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro   
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro       
+      - grafanadata:/var/lib/grafana             
+    ports:
+      - "127.0.0.1:3000:3000"                    
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]   
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s                          
+    restart: unless-stopped
 volumes:
   pgdata:                           
     external: true                  
@@ -148,3 +168,4 @@ volumes:
   promdata: {}
   lokidata: {}
   alloydata: {}
+  grafanadata: {}

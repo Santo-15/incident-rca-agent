@@ -6,8 +6,8 @@ How we see inside the shop. The RCA agent reads the same signals a human on-call
 
 | Signal | Tool | Source in our stack | Answers |
 |---|---|---|---|
-| Metrics | Prometheus | shop-api `/metrics`, postgres-exporter, redis-exporterr | Is something wrong? How bad? Since when? |
-| Logs | Loki + Promtail | shop-api JSON logs (`request_id`, `duration_ms`, error) | What exactly happened? Why? |
+| Metrics | Prometheus | shop-api `/metrics`, postgres-exporter, redis-exporter | Is something wrong? How bad? Since when? |
+| Logs | Loki + Alloy | shop-api JSON logs (`request_id`, `duration_ms`, error) | What exactly happened? Why? |
 | Traces | not used | — | — |
 
 **Why no traces:** shop-api is the only app service, so a request does not cross services. `request_id` in every log line already links one request's lines. OpenTelemetry + Tempo would add containers and RAM for little gain. The agent's tool interface (`get_logs()`, `get_metrics()`) allows a `get_traces()` adapter later.
