@@ -42,7 +42,8 @@ for i in $(seq 1 30); do
     echo "OK: $TAG is live and /health answers."
     exit 0                            
   fi
-  sleep 1                             
+  sleep 1     
+done                        
 
 echo "FAILED: /health did not answer within 30 s. $TAG stays on GitHub as the deploy record."   
 exit 1
