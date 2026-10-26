@@ -39,10 +39,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}             # :-20 = use 20 if missing
-      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-0}
-      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
-      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
+      DB_POOL_SIZE: "20"             # :-20 = use 20 if missing
+      DB_MAX_OVERFLOW: "0"
+      DB_POOL_TIMEOUT: "30"
+      DB_POOL_RECYCLE: "1800"
       CART_TTL_SECONDS: ${CART_TTL_SECONDS:-86400}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
