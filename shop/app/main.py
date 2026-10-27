@@ -24,7 +24,7 @@ logger = logging.getLogger("shop")
 app = FastAPI(title="shop-api")
 
 REQUEST_ID_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
-REQUEST_HISTORY = [] # keep recent requests in memory to debug slow requests
+
 @app.middleware("http")                               
 async def request_context(request: Request, call_next):  
     incoming = request.headers.get("X-Request-ID", "")  
@@ -45,8 +45,7 @@ async def request_context(request: Request, call_next):
         logger.log(level, "request done", extra=fields)  
     finally: 
         request_id_var.reset(token)  
-        IN_PROGRESS.dec()
-        REQUEST_HISTORY.append({"request_id": request_id, **fields, "snapshot": "x" * 131072})  
+        IN_PROGRESS.dec()  
     if request.url.path != "/metrics":  
         path = route_label(request)  
         REQUESTS.labels(request.method, path, str(fields["status"])).inc()  
