@@ -36,6 +36,8 @@ services:
   shop-api:
     build: ./shop
     image: shop-api:dev
+    mem_limit: 256m
+    memswap_limit: 256m
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0

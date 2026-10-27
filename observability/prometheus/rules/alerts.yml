@@ -45,3 +45,20 @@ groups:
         annotations:
           summary: "p95 latency above 1 s on {{ $labels.path }}"   
           description: "p95 is {{ $value | humanizeDuration }} over the last 5 minutes."
+
+      - alert: ShopApiHighMemory
+        expr: process_resident_memory_bytes{job="shop-api"} > 200 * 1024 * 1024  
+        for: 1m                           
+        labels:
+          severity: warning               
+        annotations:
+          summary: "shop-api memory near its 256 MiB limit"
+          description: "RSS is {{ $value | humanize1024 }}B."   
+
+      - alert: ShopApiRestarted          
+        expr: changes(process_start_time_seconds{job="shop-api"}[5m]) > 0  
+        labels:
+          severity: warning
+        annotations:
+          summary: "shop-api restarted in the last 5 minutes"
+          description: "A deploy also restarts it; check deploy tags before blaming a crash."   

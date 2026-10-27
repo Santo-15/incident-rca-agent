@@ -45,3 +45,5 @@ Rules in `prometheus/rules/alerts.yml`, routing in `alertmanager/alertmanager.ym
 | RedisDown | redis_up = 0 for 30 s | redis_down |
 | ShopHigh5xxRatio | 5xx > 5% for 1 min | any outage |
 | ShopHighLatency | p95 > 1 s on a path for 2 min | slow_query, bad_pool_config |
+| ShopApiHighMemory | shop-api RSS > 200 MiB for 1 min | memory_leak (before the crash) |
+| ShopApiRestarted | process start time changed in 5 min | memory_leak (OOM restart); deploys also trip it |
