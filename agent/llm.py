@@ -6,7 +6,8 @@ from langchain_groq import ChatGroq
 
 load_dotenv(find_dotenv())
 
-def get_llm(provider: str = "groq", temperature: float = 0) -> BaseChatModel:   
+def get_llm(provider: str | None = None, temperature: float = 0) -> BaseChatModel:
+    provider = provider or os.getenv("LLM_PROVIDER", "groq")
     if provider == "groq":
         return ChatGroq(
             model=os.environ["GROQ_MODEL"],         
