@@ -1,7 +1,8 @@
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from agent.llm import get_llm
 from agent.tools.loki import get_error_counts
-llm = get_llm().bind_tools([get_error_counts]) 
+
+llm = get_llm("logs", tools=[get_error_counts])
 
 messages = [
     SystemMessage("You are logs_agent for a small online shop. Use tools to look at real data before answering. "

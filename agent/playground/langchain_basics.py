@@ -1,6 +1,6 @@
 import time
 from langchain_core.messages import HumanMessage, SystemMessage
-from agent.llm import get_llm
+from agent.llm import build_model
 
 messages=[
     SystemMessage("You are an SRE assistant. Answer in one short sentence."), 
@@ -13,8 +13,8 @@ def text_of(msg):
         return msg.content
     return "".join(p.get("text", "") for p in msg.content if isinstance(p, dict))
 
-for provider in ("groq", "gemini"):
-    llm = get_llm(provider)
+for provider, model in (("groq", "openai/gpt-oss-120b"), ("gemini", "gemini-3.5-flash-lite")):   
+    llm = build_model(provider, model)              
     start = time.perf_counter()
     reply = llm.invoke(messages)
     secs = time.perf_counter() - start

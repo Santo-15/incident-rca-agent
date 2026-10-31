@@ -10,7 +10,7 @@ evidence = {
     "deploys": "none; newest tag deploy-20261026-165909 at 22:29, over an hour before the first alert",
 }
 
-structured_llm = get_llm().with_structured_output(CorrelatorAnswer)
+structured_llm = get_llm("correlator", schema=CorrelatorAnswer)
 chain = CORRELATOR_PROMPT | structured_llm
 
 answer = chain.invoke(evidence)
