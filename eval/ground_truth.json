@@ -1,0 +1,18 @@
+{
+  "locust_users": 200,
+  "down_seconds": 600,
+  "scenarios": [
+    {"id": "bad_pool_config",       "cause": "db_pool_exhausted",     "kind": "known",   "deploy": true,  "note": "pool 20 -> 1 via deploy"},
+    {"id": "kill_db",               "cause": "postgres_down",         "kind": "known",   "deploy": false, "note": "postgres SIGKILL"},
+    {"id": "memory_leak",           "cause": "memory_leak",           "kind": "known",   "deploy": true,  "note": "unbounded list via deploy"},
+    {"id": "slow_query",            "cause": "slow_query",            "kind": "known",   "deploy": false, "note": "price index dropped"},
+    {"id": "redis_down",            "cause": "redis_down",            "kind": "known",   "deploy": false, "note": "redis SIGKILL"},
+    {"id": "postgres_hang",         "cause": "postgres_down",         "kind": "variant", "deploy": false, "note": "postgres paused: timeouts, not DNS errors"},
+    {"id": "redis_hang",            "cause": "redis_down",            "kind": "variant", "deploy": false, "note": "redis paused: socket timeouts"},
+    {"id": "shop_api_down",         "cause": "shop_api_down",         "kind": "unseen",  "deploy": false, "note": "shop-api stopped, zero logs"},
+    {"id": "db_lock",               "cause": "db_lock",               "kind": "unseen",  "deploy": false, "note": "ACCESS EXCLUSIVE lock on products; QueuePool errors at size 20"},
+    {"id": "redis_oom",             "cause": "redis_out_of_memory",   "kind": "unseen",  "deploy": false, "note": "maxmemory 1 byte, noeviction; redis_up stays 1"},
+    {"id": "wrong_service_address", "cause": "wrong_service_address", "kind": "unseen",  "deploy": true,  "note": "REDIS_URL port 6380 via deploy; RedisDown silent"},
+    {"id": "code_exception",        "cause": "code_exception",        "kind": "unseen",  "deploy": true,  "note": "KeyError on /checkout via deploy"}
+  ]
+}
