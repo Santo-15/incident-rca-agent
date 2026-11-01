@@ -7,7 +7,7 @@ from agent.timeutil import hms
 from agent.tools.base import BackendUnavailable, get_metrics
 
 logger = logging.getLogger("agent.metrics")
-BASELINE_S = 30 * 60   # baseline = the 30 min before onset
+BASELINE_S = 10 * 60   # baseline = the 10 min before onset
 ONSET_S = 5 * 60       # onset = 5 min before the first alert (alerts fire after the problem starts)
 Z_ABNORMAL = 3.0
 MAX_FINDINGS = 12
