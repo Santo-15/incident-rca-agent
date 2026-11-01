@@ -7,11 +7,31 @@ Cause = Literal[
     "redis_down",
     "memory_leak",
     "slow_query",
+    "shop_api_down",          # NEW
+    "db_lock",                # NEW
+    "redis_out_of_memory",    # NEW
+    "wrong_service_address",  # NEW
+    "code_exception",         # NEW
     "insufficient_evidence",
 ]
 
+CAUSE_HELP = (  # KEY: one line per label so the LLM knows where each one stops; three causes come from bad deploys, so the names alone are ambiguous
+    "db_pool_exhausted = shop-api's DB connection pool is configured too small for the load; "
+    "postgres_down = Postgres is dead or not answering; "
+    "redis_down = Redis is dead or not answering; "
+    "memory_leak = shop-api memory grows until it is killed and restarts; "
+    "slow_query = a query became slow (e.g. missing index) while everything stays up; "
+    "shop_api_down = the shop-api process itself is gone; "
+    "db_lock = a long transaction holds a table lock and other queries wait behind it; "
+    "redis_out_of_memory = Redis is up but refuses writes because it hit its memory limit; "
+    "wrong_service_address = a deploy points shop-api at the wrong host or port of a healthy dependency; "
+    "code_exception = a deploy added code that raises an error on an endpoint; "
+    "insufficient_evidence = the evidence does not clearly point to one cause."
+    " other = a clear cause that is none of the above; name it in the summary."
+)
+
 class CorrelatorAnswer(BaseModel):
-    cause: Cause = Field(description="The single root cause, chosen from the allowed values.")
+    cause: Cause = Field(description=f"The single root cause, chosen from the allowed values. {CAUSE_HELP}")  # CHANGED  label meanings travel inside the JSON schema
     summary: str = Field(description="One sentence describing what broke and its effect on the shop.")
     evidence: list[str] = Field(description="2 to 5 short facts from the evidence that support the cause.")
     silent_signals: str = Field(description="One sentence on why the silent alerts fit this cause.")

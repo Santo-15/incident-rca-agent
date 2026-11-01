@@ -22,6 +22,8 @@ SIGNALS = [   # KEY: (name, PromQL, min_std) — the playbook's "is it up / whic
     ("restarts", 'changes(process_start_time_seconds{job="shop-api"}[5m])', 0.2),
     ("seq_tup_read_products", 'rate(pg_stat_user_tables_seq_tup_read{relname="products"}[1m])', 100),
     ("pg_connections_by_state", "sum by (state) (pg_stat_activity_count)", 1),
+    ("pg_longest_tx_s", "max(pg_stat_activity_max_tx_duration)", 5),                   
+    ("pg_exclusive_locks", 'sum(pg_locks_count{mode="accessexclusivelock"})', 0.2),   
 ]
 
 
