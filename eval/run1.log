@@ -1,0 +1,655 @@
+Locust set to 50 users; 12 scenarios x 1 runs, memory on
+[23:08] bad_pool_config run 1
+  healthy; waiting 600s for a clean baseline
+Deploying 124177d as deploy-20261101-180006: tune db pool to cut idle connections
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-180006 -> deploy-20261101-180006
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 427B 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 0.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#6 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#6 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 793B done
+#5 DONE 0.0s
+
+#7 [stage-0 2/6] WORKDIR /app
+#7 CACHED
+
+#8 [stage-0 3/6] COPY requirements.txt .
+#8 CACHED
+
+#9 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#9 CACHED
+
+#10 [stage-0 5/6] COPY . .
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:8e9bf641b0e0225712b2c066e014c0da11cb32f77572bf087c555e43a0719f7a done
+#12 exporting config sha256:f5a4c57f1be04e5e86595cff4b0c56cf6f18629df41e36200447a45a6933f710 done
+#12 exporting attestation manifest sha256:641b5dfc873e9c9a9d30270bae252a551791f8b97269c8501854413ba1a0e995
+#12 exporting attestation manifest sha256:641b5dfc873e9c9a9d30270bae252a551791f8b97269c8501854413ba1a0e995 0.0s done
+#12 exporting manifest list sha256:05d40bb976d5a37894d96be293b6be3bfc713d5d5275f313a3ca45a90bcfb525 0.0s done
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev 0.0s done
+#12 DONE 0.2s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+curl: (56) Recv failure: Connection reset by peer
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-180006 is live and /health answers.
+[2026-11-01 23:30:17 IST] bad version live for 1620s. Ctrl+C rolls back early.
+[2026-11-01 23:32:53 IST] back to main
+[2026-11-01 23:32:53 IST] rollback deploy
+Deploying 1d47cdc as deploy-20261101-180253: revert: tune db pool to cut idle connections
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-180253 -> deploy-20261101-180253
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 427B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 793B done
+#6 DONE 0.0s
+
+#7 [stage-0 2/6] WORKDIR /app
+#7 CACHED
+
+#8 [stage-0 3/6] COPY requirements.txt .
+#8 CACHED
+
+#9 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#9 CACHED
+
+#10 [stage-0 5/6] COPY . .
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:8e9bf641b0e0225712b2c066e014c0da11cb32f77572bf087c555e43a0719f7a done
+#12 exporting config sha256:f5a4c57f1be04e5e86595cff4b0c56cf6f18629df41e36200447a45a6933f710 done
+#12 exporting attestation manifest sha256:18113f7264fee5530fbe7244448672279e0370bb7906127c134bd16331a26445
+#12 exporting attestation manifest sha256:18113f7264fee5530fbe7244448672279e0370bb7906127c134bd16331a26445 0.0s done
+#12 exporting manifest list sha256:ee791698c20a320031d65c1397a5358aa16dd9744f0294813ecd97b29616af60 0.0s done
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev 0.0s done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+curl: (56) Recv failure: Connection reset by peer
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-180253 is live and /health answers.
+  expected db_pool_exhausted: got db_pool_exhausted (OK), agent 7.2s, 4 LLM calls
+[23:33] kill_db run 1
+  healthy; waiting 600s for a clean baseline
+Locust set to 50 users; 11 scenarios x 1 runs, memory on
+[23:46] kill_db run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-01 23:56:14 IST] killing postgres (SIGKILL, like a crash)
+ Container incident-rca-agent-postgres-1 Killing 
+ Container incident-rca-agent-postgres-1 Killed 
+[2026-11-01 23:56:15 IST] postgres down for 1620s. Ctrl+C brings it back early.
+[2026-11-01 23:59:29 IST] starting postgres again
+ Container incident-rca-agent-postgres-1 Starting 
+ Container incident-rca-agent-postgres-1 Started 
+  expected postgres_down: got postgres_down (OK), agent 4.9s, 4 LLM calls
+[23:59] memory_leak run 1
+  healthy; waiting 600s for a clean baseline
+Deploying a5d2546 as deploy-20261101-184410: products: keep recent pages for debugging
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-184410 -> deploy-20261101-184410
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 427B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 7.79kB done
+#6 DONE 0.0s
+
+#7 [stage-0 3/6] COPY requirements.txt .
+#7 CACHED
+
+#8 [stage-0 5/6] COPY . .
+#8 CACHED
+
+#9 [stage-0 2/6] WORKDIR /app
+#9 CACHED
+
+#10 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:e1b2e31f2d82490892986577564a94f34c83c1deefc967bde5b4fa0b4d7fe912 done
+#12 exporting config sha256:03d3888ff71eb01089cd53686e1159ab3d02cb583d202aa30f3a802dc419fdb0 done
+#12 exporting attestation manifest sha256:a925d61e5371793a8297a746345d11f7f24e4649bdab75d20ec82cc2c536e3cc 0.0s done
+#12 exporting manifest list sha256:d9947e20105510484e20b0c31b07abf306909460569043b39d36f957ce5ec539 0.0s done
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev 0.0s done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-184410 is live and /health answers.
+[2026-11-02 00:14:17 IST] bad version live for 1620s. Ctrl+C rolls back early.
+[2026-11-02 00:17:04 IST] back to main
+[2026-11-02 00:17:04 IST] rollback deploy
+Deploying 1d47cdc as deploy-20261101-184704: revert: products: keep recent pages for debugging
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-184704 -> deploy-20261101-184704
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 427B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 7.70kB done
+#6 DONE 0.0s
+
+#7 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#7 CACHED
+
+#8 [stage-0 5/6] COPY . .
+#8 CACHED
+
+#9 [stage-0 2/6] WORKDIR /app
+#9 CACHED
+
+#10 [stage-0 3/6] COPY requirements.txt .
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:8e9bf641b0e0225712b2c066e014c0da11cb32f77572bf087c555e43a0719f7a done
+#12 exporting config sha256:f5a4c57f1be04e5e86595cff4b0c56cf6f18629df41e36200447a45a6933f710 done
+#12 exporting attestation manifest sha256:df931bcc6163cef3612d15c8cb5db58fd8a94dcd02bac75692c830b7249c2b1f 0.0s done
+#12 exporting manifest list sha256:5d6675c7b9b7dedba61a01c5badb4823057704985d9353beece8f137cd2d6c8c
+#12 exporting manifest list sha256:5d6675c7b9b7dedba61a01c5badb4823057704985d9353beece8f137cd2d6c8c 0.0s done
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev 0.0s done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-184704 is live and /health answers.
+  expected memory_leak: got memory_leak (OK), agent 3.8s, 3 LLM calls
+[00:17] slow_query run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 00:32:43 IST] dropping index ix_products_price
+DROP INDEX
+[2026-11-02 00:32:44 IST] index gone for 1620s. Ctrl+C rebuilds it early.
+[2026-11-02 00:42:44 IST] rebuilding index ix_products_price
+CREATE INDEX
+  expected slow_query: no alert fired
+[00:42] redis_down run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 00:52:51 IST] killing redis (SIGKILL, like a crash)
+ Container incident-rca-agent-redis-1 Killing 
+ Container incident-rca-agent-redis-1 Killed 
+[2026-11-02 00:52:51 IST] redis down for 1620s. Ctrl+C brings it back early.
+[2026-11-02 00:55:54 IST] starting redis again
+ Container incident-rca-agent-redis-1 Starting 
+ Container incident-rca-agent-redis-1 Started 
+  expected redis_down: got redis_down (OK), agent 3.0s, 3 LLM calls
+[00:55] postgres_hang run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 01:10:55 IST] pausing postgres (frozen, not dead)
+ Container incident-rca-agent-postgres-1 Paused 
+[2026-11-02 01:10:55 IST] postgres frozen for 1620s. Ctrl+C unfreezes early.
+[2026-11-02 01:17:57 IST] unpausing postgres
+ Container incident-rca-agent-postgres-1 Unpaused 
+  expected postgres_down: got db_pool_exhausted (WRONG), agent 2.4s, 3 LLM calls
+[01:17] redis_hang run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 01:30:58 IST] pausing redis (frozen, not dead)
+ Container incident-rca-agent-redis-1 Paused 
+[2026-11-02 01:30:59 IST] redis frozen for 1620s. Ctrl+C unfreezes early.
+[2026-11-02 01:36:03 IST] unpausing redis
+ Container incident-rca-agent-redis-1 Unpaused 
+  expected redis_down: got insufficient_evidence (WRONG), agent 4.1s, 3 LLM calls
+[01:36] shop_api_down run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 01:51:13 IST] stopping shop-api (no grace period, like a crash)
+ Container incident-rca-agent-shop-api-1 Stopping 
+ Container incident-rca-agent-shop-api-1 Stopped 
+[2026-11-02 01:51:14 IST] shop-api down for 1620s. Ctrl+C brings it back early.
+[2026-11-02 01:54:27 IST] starting shop-api again
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+  expected shop_api_down: got shop_api_down (OK), agent 3.7s, 3 LLM calls
+[01:54] db_lock run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 02:06:38 IST] locking table products (ACCESS EXCLUSIVE)
+[2026-11-02 02:06:38 IST] products locked for 1620s. Ctrl+C releases early.
+[2026-11-02 02:13:42 IST] releasing the lock
+  expected db_lock: got db_pool_exhausted (WRONG), agent 3.3s, 3 LLM calls
+[02:13] redis_oom run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 02:26:23 IST] setting redis maxmemory to 1 byte, policy noeviction
+[2026-11-02 02:26:23 IST] redis full for 1620s. Ctrl+C restores early.
+WARNING agent.logs: logs unavailable: Client error '400 Bad Request' for url 'http://127.0.0.1:3100/loki/api/v1/query?query=sum+by+%28path%2C+error%29+%28count_over_time%28%7Bservice%3D%22shop-api%22%7D+%7C%3D+%22request+failed%22+%7C+json+%7C+label_format+path%3D%60%7B%7B+regexReplaceAll+%22%5B0-9%5D%2B%22+.path+%22%7Bid%7D%22+%7D%7D%60+%5B13m%5D%29%29&time=1793566883392791552'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+[2026-11-02 02:31:28 IST] restoring maxmemory=0 policy=noeviction
+  expected redis_out_of_memory: got code_exception (WRONG), agent 5.2s, 3 LLM calls
+[02:31] wrong_service_address run 1
+  healthy; waiting 600s for a clean baseline
+Deploying 275c0b5 as deploy-20261101-211529: redis: move client settings to compose
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-211529 -> deploy-20261101-211529
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 427B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#6 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#6 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 793B done
+#5 DONE 0.0s
+
+#7 [stage-0 2/6] WORKDIR /app
+#7 CACHED
+
+#8 [stage-0 5/6] COPY . .
+#8 CACHED
+
+#9 [stage-0 3/6] COPY requirements.txt .
+#9 CACHED
+
+#10 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:8e9bf641b0e0225712b2c066e014c0da11cb32f77572bf087c555e43a0719f7a done
+#12 exporting config sha256:f5a4c57f1be04e5e86595cff4b0c56cf6f18629df41e36200447a45a6933f710 done
+#12 exporting attestation manifest sha256:9426ddf9cf8dc1ca40b52345fae23b2a154a934d34748a528454888ac958e282 0.0s done
+#12 exporting manifest list sha256:2ce66b0e333f9d7f72e254f0c80f2ff0751734b3d1cc76badefd0dc554059202 0.0s done
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-211529 is live and /health answers.
+[2026-11-02 02:45:37 IST] bad version live for 1620s. Ctrl+C rolls back early.
+[2026-11-02 02:48:13 IST] back to main
+[2026-11-02 02:48:13 IST] rollback deploy
+Deploying 1d47cdc as deploy-20261101-211813: revert: redis: move client settings to compose
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-211813 -> deploy-20261101-211813
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 427B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 793B done
+#6 DONE 0.0s
+
+#7 [stage-0 2/6] WORKDIR /app
+#7 CACHED
+
+#8 [stage-0 3/6] COPY requirements.txt .
+#8 CACHED
+
+#9 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#9 CACHED
+
+#10 [stage-0 5/6] COPY . .
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:8e9bf641b0e0225712b2c066e014c0da11cb32f77572bf087c555e43a0719f7a done
+#12 exporting config sha256:f5a4c57f1be04e5e86595cff4b0c56cf6f18629df41e36200447a45a6933f710 done
+#12 exporting attestation manifest sha256:b2dab318f189975473aacd3b349d907e9bc642494c8723a131ef17b6b743ceeb 0.0s done
+#12 exporting manifest list sha256:e340c70ee8dfd39c98e2ee07858aacae99ea32e4b1bc58d951329ecd6927bcba done
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-211813 is live and /health answers.
+  expected wrong_service_address: got wrong_service_address (OK), agent 4.6s, 4 LLM calls
+[02:48] code_exception run 1
+  healthy; waiting 600s for a clean baseline
+Deploying 76a99dd as deploy-20261101-213340: checkout: read quantities by cart key
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-213340 -> deploy-20261101-213340
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 427B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 1.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 7.71kB done
+#6 DONE 0.0s
+
+#7 [stage-0 5/6] COPY . .
+#7 CACHED
+
+#8 [stage-0 2/6] WORKDIR /app
+#8 CACHED
+
+#9 [stage-0 3/6] COPY requirements.txt .
+#9 CACHED
+
+#10 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:27ee79bf3a9b30df95828da5deb4da5eb5288bf00437a325977260605ac8fda9 done
+#12 exporting config sha256:749495d9c087f64262b4e39e4c7a89dc3958fbe3f09ed35fb2f1c08698806da6 done
+#12 exporting attestation manifest sha256:4b6fe3de77cc98b2d9478828a3536c77ea67a7de17747e23800bf04c269e9eea done
+#12 exporting manifest list sha256:826c83246d89f4e2cbae40b4f6d94019948eaf06e2129b7979abc087b865ae8c done
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev 0.0s done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-213340 is live and /health answers.
+[2026-11-02 03:03:47 IST] bad version live for 1620s. Ctrl+C rolls back early.
+[2026-11-02 03:06:25 IST] back to main
+[2026-11-02 03:06:25 IST] rollback deploy
+Deploying 1d47cdc as deploy-20261101-213625: revert: checkout: read quantities by cart key
+To github.com:Santo-15/incident-rca-agent.git
+ * [new tag]         deploy-20261101-213625 -> deploy-20261101-213625
+ Image shop-api:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 427B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 150B done
+#4 DONE 0.0s
+
+#5 [stage-0 1/6] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 7.70kB done
+#6 DONE 0.0s
+
+#7 [stage-0 2/6] WORKDIR /app
+#7 CACHED
+
+#8 [stage-0 4/6] RUN --mount=type=cache,target=/root/.cache/pip pip install --resume-retries 20 --timeout 60 -r requirements.txt
+#8 CACHED
+
+#9 [stage-0 5/6] COPY . .
+#9 CACHED
+
+#10 [stage-0 3/6] COPY requirements.txt .
+#10 CACHED
+
+#11 [stage-0 6/6] RUN useradd --create-home appuser
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:8e9bf641b0e0225712b2c066e014c0da11cb32f77572bf087c555e43a0719f7a done
+#12 exporting config sha256:f5a4c57f1be04e5e86595cff4b0c56cf6f18629df41e36200447a45a6933f710 done
+#12 exporting attestation manifest sha256:6486b744877c8b5cc771164391c31200a1a4af743aba0e6a412414f0db46423a done
+#12 exporting manifest list sha256:aa4cfc62c114dedfd38ac752e8fde0dae0659d897fd00198ce73cf11389186ab done
+#12 naming to docker.io/library/shop-api:dev
+#12 naming to docker.io/library/shop-api:dev done
+#12 unpacking to docker.io/library/shop-api:dev 0.0s done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image shop-api:dev Built 
+ Container incident-rca-agent-postgres-1 Running 
+ Container incident-rca-agent-redis-1 Running 
+ Container incident-rca-agent-shop-api-1 Recreate 
+ Container incident-rca-agent-shop-api-1 Recreated 
+ Container incident-rca-agent-redis-1 Waiting 
+ Container incident-rca-agent-postgres-1 Waiting 
+ Container incident-rca-agent-redis-1 Healthy 
+ Container incident-rca-agent-postgres-1 Healthy 
+ Container incident-rca-agent-shop-api-1 Starting 
+ Container incident-rca-agent-shop-api-1 Started 
+curl: (56) Recv failure: Connection reset by peer
+OK: deploy-20261101-213625 is live and /health answers.
+  expected code_exception: got code_exception (OK), agent 4.6s, 4 LLM calls
