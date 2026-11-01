@@ -25,3 +25,18 @@ class Finding(BaseModel):  # KEY: one fact found by a specialist agent; the shar
     signal: str = Field(description="Short name of what was checked, e.g. 'pg_up' or 'QueuePool limit reached'.")
     detail: str = Field(description="One line with the real values, e.g. 'pg_up = 0 since 10:42 UTC'.")
     severity: Literal["low", "medium", "high"] = Field(default="medium", description="How abnormal the signal is.")  # KEY: default so tools only set it when they know better
+
+
+class FindingDraft(BaseModel):  # what an LLM agent (logs, diff) returns; the node adds the source itself
+    signal: str = Field(description="Short name of the problem, e.g. 'redis connection refused' or 'DB_POOL_SIZE lowered'.")
+    detail: str = Field(description="One line with the exact counts, paths, files and old -> new values from the input.")
+    severity: Literal["low", "medium", "high"] = Field(description="How likely this alone breaks the shop.")
+
+
+class FindingList(BaseModel):
+    findings: list[FindingDraft] = Field(description="1 to 5 findings, most important first.")
+
+
+class CriticVerdict(BaseModel):
+    verdict: Literal["ok", "weak"] = Field(description="ok if the evidence supports the cause and no trap applies, else weak.")
+    problems: list[str] = Field(description="Concrete problems, each phrased as what the correlator must re-check. Empty if ok.")

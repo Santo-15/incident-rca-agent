@@ -1,7 +1,9 @@
+import math
+import os
 import httpx
 from langchain_core.tools import tool
 
-LOKI_URL = "http://127.0.0.1:3100"
+LOKI_URL = os.getenv("LOKI_URL", "http://127.0.0.1:3100")
 
 @tool
 def get_error_counts(minutes: int = 10) -> str:
@@ -19,3 +21,37 @@ def get_error_counts(minutes: int = 10) -> str:
         f'{int(float(r["value"][1]))}x  {r["metric"].get("error", "unknown")[:150]}'   
         for r in rows[:10]                          
     )
+
+
+PATH_ID = 'label_format path=`{{ regexReplaceAll "[0-9]+" .path "{id}" }}`'   # KEY: /users/42/cart -> /users/{id}/cart, so user ids don't explode the series count
+
+
+class LokiLogs:   # LogSource adapter for Grafana Loki
+    def __init__(self, url: str = LOKI_URL):
+        self.url = url
+
+    def _instant(self, query: str, end: float) -> list[dict]:
+        try:
+            resp = httpx.get(f"{self.url}/loki/api/v1/query", params={"query": query, "time": int(end * 1e9)}, timeout=10)
+        except httpx.TransportError as exc:
+            from agent.tools.base import BackendUnavailable
+            raise BackendUnavailable(f"loki: {type(exc).__name__}") from exc
+        resp.raise_for_status()
+        return resp.json()["data"]["result"]
+
+    @staticmethod
+    def _minutes(start: float, end: float) -> int:
+        return max(1, min(30, math.ceil((end - start) / 60)))   # KEY: narrow window, capped at 30 min
+
+    def error_groups(self, start: float, end: float) -> list[tuple[str, str, int]]:
+        q = ('sum by (path, error) (count_over_time({service="shop-api"} |= "request failed" | json | '
+             + PATH_ID + f" [{self._minutes(start, end)}m]))")
+        rows = [(r["metric"].get("path", "?"), r["metric"].get("error", "unknown"), int(float(r["value"][1])))
+                for r in self._instant(q, end)]
+        return sorted(rows, key=lambda r: -r[2])[:50]   # cap before normalising
+
+    def slow_requests(self, start: float, end: float, min_ms: int = 1000) -> list[tuple[str, int]]:
+        q = (f'sum by (path) (count_over_time({{service="shop-api"}} | json | duration_ms > {min_ms} | '
+             + PATH_ID + f" [{self._minutes(start, end)}m]))")
+        rows = [(r["metric"].get("path", "?"), int(float(r["value"][1]))) for r in self._instant(q, end)]
+        return sorted(rows, key=lambda r: -r[1])[:10]

@@ -1,46 +1,36 @@
 from langgraph.graph import StateGraph, START, END
-from agent.state import RCAState
-from agent.schemas import Finding
+from agent.state import MAX_LOOPS, RCAState
+from agent.nodes.triage import triage
+from agent.nodes.logs_agent import logs_agent
+from agent.nodes.metrics_agent import metrics_agent
+from agent.nodes.deploy_agent import deploy_agent, diff_agent
+from agent.nodes.correlator import correlator
+from agent.nodes.critic import critic
+from agent.nodes.reporter import reporter
 
-MAX_LOOPS = 2
 
-def triage(state: RCAState) -> dict:
-    stub = Finding(source="logs", signal="stub", detail="placeholder until logs_agent (Step 4)")  # stub finding to see the reducer work
-    return {"loop_count": 0, "findings": [stub]}  # KEY: return a list; the reducer adds it to the existing findings
-
-def correlator(state: RCAState) -> dict:  
-    loop = state["loop_count"] + 1  
-    confidence = "low" if loop == 1 else "high"
-    return {"hypothesis": {"cause": "postgres_down", "confidence": confidence}, "loop_count": loop}
-
-def critic(state: RCAState) -> dict:   
-    ok = state["hypothesis"]["confidence"] != "low"
-    return {"critique": "ok" if ok else "weak: confidence low, look again"}
-
-def route_after_critic(state: RCAState) -> str: 
-    if state["critique"] != "ok" and state["loop_count"] < MAX_LOOPS:
+def route_after_critic(state: RCAState) -> str:
+    if state["critique"].startswith("weak") and state["loop_count"] < MAX_LOOPS:   # KEY: loop back only if weak AND under the limit
         return "correlator"
     return "reporter"
 
-def reporter(state: RCAState) -> dict: 
-    h = state["hypothesis"]
-    return {"report": f"Root cause: {h['cause']} (confidence {h['confidence']}, correlator ran {state['loop_count']}x)"}
 
 def build_graph():
     builder = StateGraph(RCAState)
-    builder.add_node("triage", triage)
-    builder.add_node("correlator", correlator)
-    builder.add_node("critic", critic)
-    builder.add_node("reporter", reporter)
+    for name, fn in [("triage", triage), ("logs_agent", logs_agent), ("metrics_agent", metrics_agent),
+                     ("deploy_agent", deploy_agent), ("diff_agent", diff_agent), ("correlator", correlator),
+                     ("critic", critic), ("reporter", reporter)]:
+        builder.add_node(name, fn)
     builder.add_edge(START, "triage")
-    builder.add_edge("triage", "correlator")
+    for agent in ("logs_agent", "metrics_agent", "deploy_agent"):   # KEY: fan-out, these 3 run in parallel
+        builder.add_edge("triage", agent)
+    builder.add_edge("deploy_agent", "diff_agent")   # diff needs the tags deploy_agent found
+    builder.add_edge(["logs_agent", "metrics_agent", "diff_agent"], "correlator")   # KEY: join, correlator waits for all three
     builder.add_edge("correlator", "critic")
     builder.add_conditional_edges("critic", route_after_critic, ["correlator", "reporter"])
-    builder.add_edge("reporter", END)                
+    builder.add_edge("reporter", END)
     return builder.compile()
 
+
 if __name__ == "__main__":
-    app = build_graph()
-    start = {"alerts": ["PostgresDown", "ShopHigh5xxRatio"]}
-    for update in app.stream(start, stream_mode="updates"):
-        print("node finished ->", update)
+    print(build_graph().get_graph().draw_mermaid())   # paste into a ```mermaid block to see the graph

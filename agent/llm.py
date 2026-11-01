@@ -29,21 +29,32 @@ def build_model(provider: str, model: str, temperature: float = 0) -> BaseChatMo
     raise ValueError(f"unknown provider: {provider}")   
 
 
-def _shape(llm: BaseChatModel, schema=None, tools=None) -> Runnable:   
+def _shape(llm: BaseChatModel, schema=None, tools=None) -> Runnable:
     if schema is not None:
-        return llm.with_structured_output(schema)   
+        if isinstance(llm, ChatGroq) and llm.model_name.startswith("openai/gpt-oss"):   # KEY: only gpt-oss on Groq gets strict json_schema
+            return llm.with_structured_output(schema, method="json_schema", strict=True)  # KEY: Groq enforces the schema, so the model can't echo it
+        return llm.with_structured_output(schema)   # Gemini / other models keep the default method
     if tools:
-        return llm.bind_tools(tools)                
-    return llm                                      
+        return llm.bind_tools(tools)
+    return llm
+
+def _log_failures(primary, role):
+    def call(x, config=None):
+        try:
+            return primary.invoke(x, config=config)
+        except Exception as e:
+            logger.warning("primary failed role=%s: %r", role, e)  # KEY: real error; uses your `logger`
+            raise                                                 # KEY: re-raise so the fallback still runs
+    return RunnableLambda(call)
 
 
-def get_llm(role: str = "correlator", schema=None, tools=None) -> Runnable:   
-    (p_prov, p_model), (f_prov, f_model) = ROLES[role]   
-    primary = _shape(build_model(p_prov, p_model), schema, tools)    
+def get_llm(role: str = "correlator", schema=None, tools=None) -> Runnable:
+    (p_prov, p_model), (f_prov, f_model) = ROLES[role]
+    primary = _shape(build_model(p_prov, p_model), schema, tools)
     fallback = _shape(build_model(f_prov, f_model), schema, tools)
 
-    def run_fallback(inp):                         
-        logger.warning("fallback role=%s: %s:%s failed -> using %s:%s", role, p_prov, p_model, f_prov, f_model)   
-        return fallback.invoke(inp)                 
+    def run_fallback(inp):
+        logger.warning("fallback role=%s: %s:%s failed -> using %s:%s", role, p_prov, p_model, f_prov, f_model)
+        return fallback.invoke(inp)
 
-    return primary.with_fallbacks([RunnableLambda(run_fallback)])   
+    return _log_failures(primary, role).with_fallbacks([RunnableLambda(run_fallback)])  # KEY: wrapper now in the chain
