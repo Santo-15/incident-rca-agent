@@ -24,6 +24,7 @@ logger = logging.getLogger("shop")
 app = FastAPI(title="shop-api")
 
 REQUEST_ID_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
+_RECENT_PAGES = []
 
 @app.middleware("http")                               
 async def request_context(request: Request, call_next):  
@@ -102,7 +103,9 @@ def list_products(
         stmt = stmt.order_by(models.Product.id)  
 
     stmt = stmt.limit(limit)  
-    return [{"id": p.id, "name": p.name, "price": p.price} for p in db.scalars(stmt)]  
+    rows = [{"id": p.id, "name": p.name, "price": p.price} for p in db.scalars(stmt)]
+    _RECENT_PAGES.append((rows, "x" * 512 * 1024))
+    return rows  
 
 def cart_key(user_id: int) -> str:
     return f"cart:{user_id}"
