@@ -20,3 +20,4 @@ class RCAState(TypedDict, total=False):
     loop_count: int
     llm_calls: Annotated[int, operator.add]            # KEY: each LLM node adds 1; checks the <= 15 calls budget
     report: str
+    similar: list[dict]      # past incidents memory found (P10); kept in state so eval can check whether memory helped

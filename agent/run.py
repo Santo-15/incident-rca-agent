@@ -28,6 +28,7 @@ def main():
     out = build_graph().invoke({"payload": payload})
     print(out["report"])
     print(f"\ntime to diagnosis: {time.perf_counter() - start:.1f} s · findings: {len(out.get('findings', []))}")   # KEY: success criterion < 5 min
+    print("memory hits:", [(h["scenario"], h["distance"]) for h in out.get("similar", [])] or "none")
 
 
 if __name__ == "__main__":
