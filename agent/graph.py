@@ -1,10 +1,12 @@
 from langgraph.graph import StateGraph, START, END
-from agent.state import RCAState 
+from agent.state import RCAState
+from agent.schemas import Finding
 
 MAX_LOOPS = 2
 
-def triage(state: RCAState) -> dict: 
-    return {"loop_count": 0} 
+def triage(state: RCAState) -> dict:
+    stub = Finding(source="logs", signal="stub", detail="placeholder until logs_agent (Step 4)")  # stub finding to see the reducer work
+    return {"loop_count": 0, "findings": [stub]}  # KEY: return a list; the reducer adds it to the existing findings
 
 def correlator(state: RCAState) -> dict:  
     loop = state["loop_count"] + 1  
