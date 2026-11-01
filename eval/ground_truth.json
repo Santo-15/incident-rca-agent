@@ -1,5 +1,5 @@
 {
-  "locust_users": 200,
+  "locust_users": 50,
   "down_seconds": 600,
   "scenarios": [
     {"id": "bad_pool_config",       "cause": "db_pool_exhausted",     "kind": "known",   "deploy": true,  "note": "pool 20 -> 1 via deploy"},
