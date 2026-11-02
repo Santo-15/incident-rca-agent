@@ -10,3 +10,5 @@ receivers:
     webhook_configs:
       - url: http://webhook-debug:8080/alerts  
         send_resolved: true
+      - url: http://host.docker.internal:8001/alerts   # NEW: the RCA agent API in WSL
+        send_resolved: true
