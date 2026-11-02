@@ -1,0 +1,11 @@
+{"scenario": "bad_pool_config", "started": "2026-11-01T18:00:06+00:00", "single": "db_pool_exhausted"}
+{"scenario": "kill_db", "started": "2026-11-02T05:49:53+00:00", "single": "postgres_down"}
+{"scenario": "memory_leak", "started": "2026-11-01T18:44:10+00:00", "single": "memory_leak"}
+{"scenario": "redis_down", "started": "2026-11-02T06:07:19+00:00", "single": "redis_down"}
+{"scenario": "postgres_hang", "started": "2026-11-02T06:24:53+00:00", "single": "db_pool_exhausted"}
+{"scenario": "redis_hang", "started": "2026-11-02T06:44:19+00:00", "single": "redis_down"}
+{"scenario": "shop_api_down", "started": "2026-11-01T20:21:13+00:00", "single": "shop_api_down"}
+{"scenario": "db_lock", "started": "2026-11-02T07:03:44+00:00", "single": "db_pool_exhausted"}
+{"scenario": "redis_oom", "started": "2026-11-02T07:23:01+00:00", "single": "redis_out_of_memory"}
+{"scenario": "wrong_service_address", "started": "2026-11-01T21:15:29+00:00", "single": "wrong_service_address"}
+{"scenario": "code_exception", "started": "2026-11-01T21:33:40+00:00", "single": "code_exception"}
