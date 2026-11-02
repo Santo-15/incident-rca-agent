@@ -75,6 +75,14 @@ def api_get(path: str):
     except httpx.HTTPError:
         return None
 
+def api_post(path: str) -> tuple[bool, str]:
+    try:
+        r = httpx.post(f"{API}{path}", timeout=10)
+        body = r.json()
+        return r.is_success, body.get("detail") or body.get("action", "")   # API errors come back in "detail"
+    except httpx.HTTPError as exc:
+        return False, str(exc)
+
 
 health = api_get("/health")
 incidents = api_get("/incidents") or []
@@ -91,6 +99,28 @@ with st.sidebar:
         pick = st.radio("Incidents", list(labels), format_func=labels.get)   # newest first, so the default is the latest
     if st.button("↻ Refresh", use_container_width=True):              # S5 replaces this with auto-refresh
         st.rerun()
+    show('<div class="section">Break it</div>')
+    chaos = api_get("/chaos")
+    if chaos:
+        if chaos["running"]:                                          # an outage is live
+            st.error(f"💥 {chaos['running']} is live since {chaos['started'][11:19]} UTC · auto-restores after {chaos['chaos_s'] // 60} min")
+            if st.button("🛠 Restore now", use_container_width=True):
+                api_post("/chaos/stop")
+                st.rerun()
+        else:
+            opts = {s["id"]: f"{s['id']} · {s['kind']}" for s in chaos["scenarios"]}
+            sid = st.selectbox("Scenario", list(opts), format_func=opts.get)
+            st.caption(next(s["note"] for s in chaos["scenarios"] if s["id"] == sid))   # one-line description from ground_truth.json
+            wait = chaos["cooldown_left_s"]
+            if st.button("💥 Break it", disabled=wait > 0, use_container_width=True):
+                ok, msg = api_post(f"/chaos/{sid}")
+                if ok:
+                    st.rerun()
+                st.error(msg)
+            if wait:
+                st.caption(f"Cooling down {wait // 60}m {wait % 60}s: the agent needs a clean 10-min baseline.")
+            if chaos["last_exit"] not in (None, 0, 130):              # 130 = stopped by Restore (Ctrl+C), that's fine
+                st.warning("Last scenario failed: see /tmp/rca_chaos.log (deploy scenarios need a clean git tree).")
 
 # ---------- hero ----------
 done = [i for i in incidents if i["status"] == "done"]
@@ -125,7 +155,7 @@ show('<div class="section">Agent pipeline</div><div class="pipe">'
      + '</div>')
 
 if not inc:
-    show('<div class="section">Status</div><div class="card"><span class="summary">No incidents yet. Break something (buttons coming next) and wait for an alert.</span></div>')
+    show('<div class="section">Status</div><div class="card"><span class="summary">No incidents yet. Pick a scenario in the sidebar, press Break it, and watch the agent work.</span></div>')
     st.stop()
 
 # ---------- verdict ----------
