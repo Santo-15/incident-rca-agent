@@ -52,7 +52,7 @@ class LokiLogs:   # LogSource adapter for Grafana Loki
         return sorted(rows, key=lambda r: -r[2])[:50]   # cap before normalising
 
     def slow_requests(self, start: float, end: float, min_ms: int = 1000) -> list[tuple[str, int]]:
-        q = (f'sum by (path) (count_over_time({{service="shop-api"}} | json path="path", duration_ms="duration_ms" | duration_ms > {min_ms} | '   # CHANGED  only path + duration_ms
+        q = (f'sum by (path) (count_over_time({{service="shop-api"}} |= "duration_ms" | json path="path", duration_ms="duration_ms" | duration_ms > {min_ms} | '   # CHANGED  KEY: |= "duration_ms" skips lines without that field, so the number filter never sees ""
             + PATH_ID + f" [{self._minutes(start, end)}m]))")
         rows = [(r["metric"].get("path", "?"), int(float(r["value"][1]))) for r in self._instant(q, end)]
         return sorted(rows, key=lambda r: -r[1])[:10]
