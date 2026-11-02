@@ -1,0 +1,9 @@
+[theme]
+base = "dark"
+primaryColor = "#00e5a0"
+backgroundColor = "#0b0f14"
+secondaryBackgroundColor = "#111821"
+textColor = "#d6e2ee"
+
+[client]
+toolbarMode = "minimal"      # hides the "Deploy" button and dev menu for viewers
