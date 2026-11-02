@@ -23,7 +23,9 @@ SIGNALS = [   # KEY: (name, PromQL, min_std) — the playbook's "is it up / whic
     ("seq_tup_read_products", 'rate(pg_stat_user_tables_seq_tup_read{relname="products"}[1m])', 100),
     ("pg_connections_by_state", "sum by (state) (pg_stat_activity_count)", 1),
     ("pg_longest_tx_s", "max(pg_stat_activity_max_tx_duration)", 5),                   
-    ("pg_exclusive_locks", 'sum(pg_locks_count{mode="accessexclusivelock"})', 0.2),   
+    ("pg_exclusive_locks", 'sum(pg_locks_count{mode="accessexclusivelock"})', 0.2),
+    ("pg_exporter_up", 'up{job="postgres"}', 0.1),
+    ("redis_exporter_up", 'up{job="redis"}', 0.1),
 ]
 
 
