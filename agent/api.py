@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from agent.graph import build_graph
 from agent.run import live_payload, tracing_config                    # same helpers the eval runner used
+from agent.llm import ROLES  
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")   # shows "primary failed" / fallback lines
 logger = logging.getLogger("agent.api")
@@ -42,24 +43,84 @@ class Webhook(BaseModel):         # KEY: Alertmanager webhook body (version 4); 
     alerts: list[dict] = Field(default_factory=list)                  # raw alerts; triage already parses this exact shape
 
 
+NODE_ROLE = {"logs_agent": "logs", "diff_agent": "diff", "correlator": "correlator", "critic": "critic"}   # nodes that may call an LLM
+
+
+def describe(node: str, upd: dict) -> str:                            # one human-readable line per finished node
+    f = upd.get("findings") or []
+    if node == "triage":
+        return f"{len(upd.get('alerts', []))} alert(s) firing · {len(upd.get('silent', []))} known alerts silent"
+    if node == "correlator":
+        h = upd.get("hypothesis") or {}
+        return f"hypothesis → {h.get('cause')} ({h.get('confidence')} confidence): {h.get('summary', '')}"
+    if node == "critic":
+        return f"verdict → {upd.get('critique')}"                     # KEY: "ok" or "weak: ..." = the self-check that can force a retry
+    if node == "reporter":
+        return "incident report written"
+    high = [x.signal for x in f if x.severity == "high"][:3]
+    return f"{len(f)} finding(s)" + (f" · high: {'; '.join(high)}" if high else "")
+
+
+class TraceLog(logging.Handler):                                      # catches "fallback role=..." warnings from agent/llm.py
+    def __init__(self, inc: dict, t0: float):
+        super().__init__(logging.WARNING)
+        self.inc, self.t0 = inc, t0
+
+    def emit(self, record):
+        msg = record.getMessage()
+        if msg.startswith("fallback role="):                          # KEY: a hidden fallback becomes a visible trace line
+            self.inc["trace"].append({"t": round(time.perf_counter() - self.t0, 1), "node": "llm", "text": msg[:220], "llm": None})
+
+
 def diagnose(iid: str):                                               # KEY: runs in the worker thread, never inside the request
     inc = INCIDENTS[iid]
     try:
+        inc["settle_until"] = time.time() + SETTLE_S                  # the UI shows a countdown from this
         time.sleep(SETTLE_S)                                          # let the other alerts of this outage fire too
         payload = live_payload()                                      # KEY: current alerts from Alertmanager, like the eval
         if not payload["alerts"]:                                     # outage already over: use what the webhook sent
             payload = inc["payload"]
-        inc["status"] = "running"
-        inc["started_at"] = now()
+        inc.update(status="running", started_at=now(), trace=[])
         t0 = time.perf_counter()
-        out = GRAPH.invoke({"payload": payload}, config=tracing_config())   # KEY: same call as python -m agent.run
+        handler = TraceLog(inc, t0)
+        logging.getLogger().addHandler(handler)
+        final = {}
+        try:
+            for mode, chunk in GRAPH.stream({"payload": payload}, config=tracing_config(),
+                                            stream_mode=["updates", "values"]):   # KEY: "updates" = what each node just returned; "values" = full state so far
+                if mode == "values":
+                    final = chunk                                     # the last one is the final state (same as invoke() returned)
+                    continue
+                for node, upd in chunk.items():
+                    upd = upd or {}
+                    role = NODE_ROLE.get(node)
+                    inc["trace"].append({
+                        "t": round(time.perf_counter() - t0, 1),      # seconds since the agent started
+                        "node": node,
+                        "text": describe(node, upd),
+                        "count": len(upd.get("findings") or []),
+                        "high": [x.signal for x in (upd.get("findings") or []) if x.severity == "high"][:3],
+                        "cause": (upd.get("hypothesis") or {}).get("cause"),
+                        "confidence": (upd.get("hypothesis") or {}).get("confidence"),
+                        "llm": ROLES[role][0][1].split("/")[-1] if role and upd.get("llm_calls") else None,
+                        "llm": ROLES[role][0][1].split("/")[-1] if role and upd.get("llm_calls") else None,   # primary model name, only if this node called an LLM
+                    })
+                    hits = upd.get("similar") or []
+                    if node == "correlator" and hits and not any(e["node"] == "memory" for e in inc["trace"]):
+                        inc["trace"].append({"t": inc["trace"][-1]["t"], "node": "memory",   # KEY: past-incident recall from Chroma
+                                             "text": "similar past incident: " + ", ".join(f"{h['scenario']} → {h['cause']} (distance {h['distance']})" for h in hits),
+                                             "llm": None})
+        finally:
+            logging.getLogger().removeHandler(handler)
         inc.update({
             "status": "done",
             "agent_s": round(time.perf_counter() - t0, 1),
-            "hypothesis": out["hypothesis"],                          # cause, confidence, deploy_tag, evidence...
-            "llm_calls": out.get("llm_calls"),
-            "findings": [f.model_dump() for f in out.get("findings", [])],   # Finding objects -> plain dicts for JSON
-            "report": out["report"],
+            "hypothesis": final["hypothesis"],
+            "hypotheses": final.get("hypotheses", []),                # every correlator attempt, first -> last
+            "critique": final.get("critique"),
+            "llm_calls": final.get("llm_calls"),
+            "findings": [f.model_dump() for f in final.get("findings", [])],
+            "report": final["report"],
         })
     except Exception as exc:                                          # KEY: a failed diagnosis is recorded, the API keeps running
         logger.exception("diagnosis failed for %s", iid)
