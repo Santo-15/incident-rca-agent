@@ -1,18 +1,18 @@
 # Incident report
-**Root cause:** insufficient_evidence (confidence medium)
-**Summary:** Evidence points to severe Redis timeouts causing high latency and 5xx errors, but without a RedisDown alert or abnormal redis_up metric the root cause cannot be definitively identified.
+**Root cause:** redis_down (confidence high)
+**Summary:** Redis became unavailable, causing API requests that depend on it (/cart, /checkout) to time out and return 5xx errors, leading to high latency and error alerts.
 
-**Alerts fired:** ShopHighLatency{path=/users/{user_id}/checkout} since 20:03:37 UTC, ShopHigh5xxRatio since 20:03:37 UTC, ShopHighLatency{path=/users/{user_id}/cart} since 20:03:37 UTC
+**Alerts fired:** ShopHigh5xxRatio since 06:46:37 UTC, ShopHighLatency{path=/users/{user_id}/checkout} since 06:46:52 UTC, ShopHighLatency{path=/users/{user_id}/cart} since 06:46:52 UTC
 **Alerts silent:** ShopApiDown, PostgresDown, RedisDown, ShopApiHighMemory, ShopApiRestarted
 
 **Evidence**
-- High number of Redis connection and read timeouts on /cart and /checkout endpoints
-- Sharp rise in 5xx rates and latency for those same endpoints starting at 20:01:22 UTC
-- RedisUp metric remains normal (redis_up=1) and no RedisDown alert was fired
-- No recent deploy that touched relevant code or config
+- high number of redis connection timeout errors on /cart and /checkout endpoints
+- redis_exporter_up metric dropped to 0 starting at 06:44:22 UTC
+- ShopHigh5xxRatio and ShopHighLatency alerts fire for the same paths that hit Redis
+- no recent deploy that could have changed code or config
 
-**Silent signals:** The absence of a RedisDown alert and a normal redis_up metric means the incident cannot be conclusively attributed to Redis being down; similarly, no DB‑pool exhaustion signals (e.g., connection errors or pool‑size alerts) are present, so that cause is also unsupported.
+**Silent signals:** RedisDown alert is silent, but the exporter stopped reporting (redis_exporter_up=0) indicating the exporter (and likely Redis) is unreachable, which explains the missing alert.
 **Deploy:** not deploy-related
-**Suggested fix (playbook):** no fix suggested: check the deciding signal named in the summary
+**Suggested fix (playbook):** docker compose start redis; carts return from AOF
 
-_Critic: ok (rule checks only, loop limit reached) · correlator runs: 2 · LLM calls: 3_
+_Critic: weak: redis_down needs one of alerts ['RedisDown'] or abnormal metrics ['redis_up']; none is present · correlator runs: 2 · LLM calls: 3_

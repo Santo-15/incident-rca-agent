@@ -1,19 +1,18 @@
 # Incident report
-**Root cause:** code_exception (confidence medium)
-**Summary:** A code change (or existing bug) causes the /users/{user_id}/cart endpoint to raise an exception, resulting in a sharp rise in 5xx errors while the rest of the system stays healthy.
+**Root cause:** redis_out_of_memory (confidence high)
+**Summary:** Redis hit its maxmemory limit, rejecting write commands for cart operations, which caused a surge of 5xx errors on the cart endpoint while the rest of the system appeared healthy.
 
-**Alerts fired:** ShopHigh5xxRatio since 20:59:07 UTC
+**Alerts fired:** ShopHigh5xxRatio since 07:25:37 UTC
 **Alerts silent:** ShopApiDown, PostgresDown, RedisDown, ShopHighLatency, ShopApiHighMemory, ShopApiRestarted
 
 **Evidence**
-- 5xx_rate_by_path spikes only for /users/{user_id}/cart (4.69) while other DB‑backed paths stay at 0
-- pg_up=1 but pg_connections_by_state shows 0 active and 0 disabled connections
-- No latency increase on the affected path (p95 0.0228 s) indicating requests fail immediately
-- No deploy in the minutes before the alert, so no config change caused it
-- Logs unavailable due to log backend error, so the API error details are missing
+- High 5xx rate on /users/{user_id}/cart starting at 07:23:22 UTC (peak 4.6)
+- Log entries showing "redis memory limit exceeded" and OutOfMemoryError on cart endpoint
+- Redis exporter reports redis_up=1 (exporter still up despite memory issue)
+- Other paths (/products, checkout) show no 5xx spikes, indicating issue isolated to Redis usage
 
-**Silent signals:** Alerts for ShopApiDown, PostgresDown, RedisDown, HighLatency, HighMemory, and Restarts are silent because the shop‑api process remains up and the database is reachable; only the cart endpoint raises an exception, producing 5xx without affecting overall service health.
+**Silent signals:** ShopApiDown, PostgresDown, RedisDown, ShopHighLatency, ShopApiHighMemory, ShopApiRestarted remained silent because the API process stayed alive, PostgreSQL was healthy, and Redis exporter kept reporting up even though Redis refused writes due to memory exhaustion.
 **Deploy:** not deploy-related
-**Suggested fix (playbook):** git revert <bad commit> + ./deploy.sh "rollback ..."
+**Suggested fix (playbook):** redis-cli CONFIG SET maxmemory 0 (or raise it), then find what filled Redis
 
-_Critic: ok (rule checks only, loop limit reached) · correlator runs: 2 · LLM calls: 3_
+_Critic: ok · correlator runs: 1 · LLM calls: 3_

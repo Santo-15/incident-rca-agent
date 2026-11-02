@@ -1,0 +1,53 @@
+Locust set to 50 users; 6 scenarios x 1 runs, memory on
+[11:09] kill_db run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 11:19:53 IST] killing postgres (SIGKILL, like a crash)
+ Container incident-rca-agent-postgres-1 Killing 
+ Container incident-rca-agent-postgres-1 Killed 
+[2026-11-02 11:19:53 IST] postgres down for 1620s. Ctrl+C brings it back early.
+WARNING agent.llm: primary failed role=critic: BadRequestError('Error code: 400 - {\'error\': {\'message\': "Failed to generate JSON. Please adjust your prompt. See \'failed_generation\' for more details.", \'type\': \'invalid_request_error\', \'code\': \'json_validate_failed\', \'failed_generation\': \'The hypothesis is well‑supported by the evidence: the\\u202fPostgresDown alert, the drop of\\u202fpg_up\\u202fto\\u202f0, numerous OperationalError logs about host‑resolution and connection‑refused failures, and the simultaneous spike in latency and 5xx rates on all DB‑backed endpoints all point to PostgreSQL being unreachable. There is no recent deploy that could explain the issue, and the “ShopApiDown” silent signal is consistent with the API process staying alive while its downstream database is down (a known trap that is correctly handled). No contradictory evidence or alternative trap is present.\\n\\n**Verdict:** ok\\n\\n**Problems:** [] (none)\'}}')
+WARNING agent.llm: fallback role=critic: groq:openai/gpt-oss-120b failed -> using gemini:gemini-3.5-flash-lite
+/home/santo/incident-rca-agent/.venv/lib/python3.14/site-packages/langchain_google_genai/chat_models.py:3919: UserWarning: Model 'gemini-3.5-flash-lite' uses fixed sampling defaults; the sampling parameter(s) temperature will be ignored.
+  request = self._build_request_config(
+[2026-11-02 11:22:58 IST] starting postgres again
+ Container incident-rca-agent-postgres-1 Starting 
+ Container incident-rca-agent-postgres-1 Started 
+  expected postgres_down: got postgres_down (OK), agent 5.1s, 3 LLM calls
+[11:22] redis_down run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 11:37:19 IST] killing redis (SIGKILL, like a crash)
+ Container incident-rca-agent-redis-1 Killing 
+ Container incident-rca-agent-redis-1 Killed 
+[2026-11-02 11:37:19 IST] redis down for 1620s. Ctrl+C brings it back early.
+[2026-11-02 11:40:02 IST] starting redis again
+ Container incident-rca-agent-redis-1 Starting 
+ Container incident-rca-agent-redis-1 Started 
+  expected redis_down: got redis_down (OK), agent 3.1s, 3 LLM calls
+[11:40] postgres_hang run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 11:54:53 IST] pausing postgres (frozen, not dead)
+ Container incident-rca-agent-postgres-1 Paused 
+[2026-11-02 11:54:53 IST] postgres frozen for 1620s. Ctrl+C unfreezes early.
+[2026-11-02 12:01:39 IST] unpausing postgres
+ Container incident-rca-agent-postgres-1 Unpaused 
+  expected postgres_down: got postgres_down (OK), agent 5.1s, 4 LLM calls
+[12:01] redis_hang run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 12:14:19 IST] pausing redis (frozen, not dead)
+ Container incident-rca-agent-redis-1 Paused 
+[2026-11-02 12:14:20 IST] redis frozen for 1620s. Ctrl+C unfreezes early.
+[2026-11-02 12:18:53 IST] unpausing redis
+ Container incident-rca-agent-redis-1 Unpaused 
+  expected redis_down: got redis_down (OK), agent 3.7s, 3 LLM calls
+[12:18] db_lock run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 12:33:44 IST] locking table products (ACCESS EXCLUSIVE)
+[2026-11-02 12:33:44 IST] products locked for 1620s. Ctrl+C releases early.
+[2026-11-02 12:40:20 IST] releasing the lock
+  expected db_lock: got db_pool_exhausted (WRONG), agent 5.9s, 4 LLM calls
+[12:40] redis_oom run 1
+  healthy; waiting 600s for a clean baseline
+[2026-11-02 12:53:01 IST] setting redis maxmemory to 1 byte, policy noeviction
+[2026-11-02 12:53:02 IST] redis full for 1620s. Ctrl+C restores early.
+[2026-11-02 12:57:54 IST] restoring maxmemory=0 policy=noeviction
+  expected redis_out_of_memory: got redis_out_of_memory (OK), agent 3.0s, 3 LLM calls

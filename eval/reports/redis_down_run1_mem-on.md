@@ -1,17 +1,17 @@
 # Incident report
 **Root cause:** redis_down (confidence high)
-**Summary:** Redis became unreachable (DNS resolution failure), causing the shop‑api to return high latency and 5xx errors on cart and checkout endpoints while the API and database remained operational.
+**Summary:** Redis became unreachable, causing resolution and connection errors for cart and checkout requests, which led to high latency and 5xx errors while the rest of the system stayed healthy.
 
-**Alerts fired:** RedisDown since 19:23:37 UTC, ShopHigh5xxRatio since 19:25:22 UTC, ShopHighLatency{path=/users/{user_id}/checkout} since 19:25:37 UTC, ShopHighLatency{path=/users/{user_id}/cart} since 19:25:37 UTC
+**Alerts fired:** RedisDown since 06:07:52 UTC, ShopHighLatency{path=/users/{user_id}/checkout} since 06:09:52 UTC, ShopHigh5xxRatio since 06:09:52 UTC, ShopHighLatency{path=/users/{user_id}/cart} since 06:09:52 UTC
 **Alerts silent:** ShopApiDown, PostgresDown, ShopApiHighMemory, ShopApiRestarted
 
 **Evidence**
-- RedisDown alert fired at 19:23:37 UTC
-- High rate of DNS resolution errors to redis (Error -2 / Error -3) on /cart and /checkout endpoints
-- Redis_up metric dropped to 0 starting at 19:23:07 UTC
-- Sharp increase in latency and 5xx rates for /users/{user_id}/cart and /checkout coinciding with Redis failure
+- RedisDown alert fired at 06:07:52 UTC and redis_up metric dropped to 0
+- High volume of "redis host resolution failure" errors (655x) on /cart and /checkout endpoints
+- High 5xx rates and latency spikes on the same endpoints starting shortly after RedisDown
+- No recent deploy tag within minutes before the first alert, so no code change caused it
 
-**Silent signals:** ShopApiDown, PostgresDown, ShopApiHighMemory and ShopApiRestarted remained silent because the API process stayed up and PostgreSQL stayed healthy; only the Redis dependency was unavailable, causing the observed errors.
+**Silent signals:** ShopApiDown and PostgresDown alerts remained silent because the shop‑api process stayed up and PostgreSQL stayed reachable; the failure was isolated to Redis, so those components showed no outage.
 **Deploy:** not deploy-related
 **Suggested fix (playbook):** docker compose start redis; carts return from AOF
 
