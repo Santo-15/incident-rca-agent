@@ -187,6 +187,8 @@ SCENARIOS = {s["id"]: s for s in GT["scenarios"] if s["id"] != "slow_query"}   #
 CHAOS_S = int(os.getenv("RCA_CHAOS_S", "420"))                        # KEY: outage length; long enough for the slow alerts (~280 s) + settle
 COOLDOWN_S = int(os.getenv("RCA_CHAOS_COOLDOWN_S", "600"))            # KEY: metrics_agent needs a clean 10-min baseline before the next outage
 LOCUST_URL = os.getenv("LOCUST_URL", "http://127.0.0.1:8089")
+DAILY_MAX = int(os.getenv("RCA_CHAOS_DAILY_MAX", "8"))               # KEY: max outages per 24 h, protects the free LLM quota
+RUNS: list[float] = []                                               # start times of recent outages (in memory; restart clears it)
 CHAOS = {"proc": None, "id": None, "started": None, "done_at": None}  # the one chaos run we allow at a time
 
 
@@ -198,7 +200,8 @@ def chaos_state() -> dict:
     left = 0 if CHAOS["done_at"] is None else max(0, int(COOLDOWN_S - (time.time() - CHAOS["done_at"])))
     return {"running": CHAOS["id"] if running else None, "started": CHAOS["started"], "chaos_s": CHAOS_S,
             "cooldown_left_s": 0 if running else left,
-            "last_exit": None if running or p is None else p.returncode}
+            "last_exit": None if running or p is None else p.returncode,
+            "runs_left": max(0, DAILY_MAX - len([t for t in RUNS if t > time.time() - 86400]))}
 
 
 @app.get("/chaos")
@@ -224,6 +227,10 @@ def chaos_start(sid: str):
         raise HTTPException(status_code=409, detail=f"{state['running']} is already running")
     if state["cooldown_left_s"]:
         raise HTTPException(status_code=409, detail=f"cooling down, {state['cooldown_left_s']} s left")
+    RUNS[:] = [t for t in RUNS if t > time.time() - 86400]          # forget outages older than 24 h
+    if len(RUNS) >= DAILY_MAX:                                        # KEY: daily cap reached
+        wait_h = round((RUNS[0] + 86400 - time.time()) / 3600, 1)     # hours until the oldest one drops out
+        raise HTTPException(status_code=429, detail=f"daily demo limit reached ({DAILY_MAX} per 24 h), next slot in {wait_h} h")
     try:                                                              # same load as the eval (50 users), best effort
         httpx.post(f"{LOCUST_URL}/swarm", data={"user_count": GT["locust_users"], "spawn_rate": 20}, timeout=5)
     except httpx.HTTPError:
@@ -232,4 +239,5 @@ def chaos_start(sid: str):
     CHAOS.update(proc=subprocess.Popen(["bash", f"chaos/{sid}.sh", str(CHAOS_S)], cwd=ROOT, stdout=log,
                                        stderr=subprocess.STDOUT, start_new_session=True),   # KEY: own process group, so killpg stops only the script
                  id=sid, started=now(), done_at=None)
+    RUNS.append(time.time())                                          # KEY: count this outage
     return {"action": "breaking", "scenario": sid, "seconds": CHAOS_S}

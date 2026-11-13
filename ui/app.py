@@ -179,11 +179,12 @@ with st.sidebar:
             sid = st.selectbox("Failure to inject", list(opts), format_func=opts.get)
             st.caption(next(s["note"] for s in chaos["scenarios"] if s["id"] == sid))
             wait = chaos["cooldown_left_s"]
-            if st.button("💥 Break it", disabled=wait > 0, use_container_width=True, type="primary"):
+            if st.button("💥 Break it", disabled=wait > 0 or chaos.get("runs_left", 1) == 0, use_container_width=True, type="primary"):
                 ok, msg = api_post(f"/chaos/{sid}")
                 if ok:
                     st.rerun()
                 st.error(msg)
+            st.caption(f"{chaos.get('runs_left', '?')} demo outages left today")   # daily cap, visible to visitors
             if wait:
                 st.caption(f"Cooling down {wait // 60}m {wait % 60}s so the agent gets a clean 10-min baseline.")
             if chaos["last_exit"] not in (None, 0, 130):
