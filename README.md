@@ -6,7 +6,7 @@ A multi-agent root-cause analysis (RCA) system built with LangGraph. When an ale
 
 ![Live investigation](docs/screenshots/ui-solved.png)
 
-> Demo video: coming soon
+> Demo video: coming soon · Live demo: on request (runs on AWS; the VM is started for demos to save credits)
 
 ## The problem
 When production breaks, an on-call engineer spends roughly 45–60 minutes jumping between dashboards, log searches and recent deploys before they even know *what* broke. Customers see errors the whole time.
@@ -38,7 +38,7 @@ Groq is the primary LLM provider, with an automatic fallback to Gemini. Every ru
 ## Architecture
 ![Containers](docs/diagrams/02-container-diagram.png)
 
-- `agent/api.py`: FastAPI. It receives the Alertmanager webhook (202 Accepted), de-duplicates by alert group, and runs the diagnosis in a background worker (one at a time, to respect free-tier limits). It streams per-agent progress through LangGraph's `stream()`. It also exposes guarded chaos endpoints for the demo: one outage at a time, a 10-min cooldown, and auto-restore.
+- `agent/api.py`: FastAPI. It receives the Alertmanager webhook (202 Accepted), de-duplicates by alert group, and runs the diagnosis in a background worker (one at a time, to respect free-tier limits). It streams per-agent progress through LangGraph's `stream()`. It also exposes guarded chaos endpoints for the demo: one outage at a time, auto-restore, a 10-min cooldown, and at most 8 outages per 24 h (HTTP 429).
 - `ui/app.py`: a Streamlit dashboard that only talks to the API. It shows the live investigation timeline, the verdict and the evidence.
 
 ## Results
@@ -72,6 +72,35 @@ Hand-written rules only handle incidents someone has already seen. Most of the g
 - slow_query never fires an alert at 50 users.
 - The fixes were found on the same test set, and the rerun covered 6 of 12 scenarios.
 - The memory gain is not yet measured separately.
+
+## Deployment
+Runs on one AWS EC2 VM (Free plan credits) and is reachable through a Cloudflare Tunnel.
+
+```mermaid
+flowchart LR
+  V["Visitor (browser)"] -->|HTTPS| CF["Cloudflare edge<br/>*.trycloudflare.com"]
+  CF <-->|"tunnel, opened from the VM"| T
+  subgraph EC2["AWS EC2 · Ubuntu 24.04 · m7i-flex.large"]
+    T["cloudflared<br/>(systemd)"] -->|127.0.0.1:8501| UI["Streamlit UI<br/>(systemd)"]
+    UI -->|127.0.0.1:8001| API["RCA agent API<br/>FastAPI (systemd)"]
+    subgraph DC["Docker Compose"]
+      SHOP["shop-api · Postgres · Redis · Locust"]
+      OBS["Prometheus · Loki · Alloy · Alertmanager · Grafana"]
+    end
+    OBS -->|alert webhook| API
+    API -->|PromQL / LogQL| OBS
+    API -->|chaos scripts| SHOP
+  end
+  API -->|LLM calls| LLM["Groq / Gemini"]
+  API -->|deploy tags, diffs| GH["GitHub"]
+```
+
+- **No open web port.** `cloudflared` opens an outbound connection to Cloudflare, which serves the public HTTPS link. The AWS firewall allows only SSH (key-only login). The UI and every container port listen on `127.0.0.1`; the API listens on `0.0.0.0:8001` only so Alertmanager inside Docker can reach it, and the firewall blocks it from outside.
+- **systemd services** run the API, UI and tunnel, restart them if they crash, and start them on boot.
+- **Safe public chaos:** one outage at a time, auto-restore after 7 min, a 10-min cooldown, max 8 outages per 24 h, and `chaos/reset.sh` before every API start, so a VM stop in the middle of an outage can't leave the shop broken.
+- **Secrets** live in `.env` and `~/.git-credentials` (owner-only, never in git). Deploy scenarios push `deploy-*` tags with a fine-grained GitHub token limited to this repo.
+- **Upkeep:** automatic security updates; Docker logs capped at 3 × 10 MB per container.
+- **Trade-offs (₹0 budget):** a quick tunnel gives a new random link on every start (a fixed link needs a paid domain), and the VM runs on demand to save credits, so the live demo is on request.
 
 ## Quick start (local)
 Needs Docker Desktop (with WSL2 on Windows), Python 3.12+, and free API keys from Groq and Google AI Studio.
