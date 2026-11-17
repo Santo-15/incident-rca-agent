@@ -201,9 +201,10 @@ status = inc["status"] if inc else "idle"
 trace = (inc or {}).get("trace") or []
 
 
-def keep_live():                                                      # KEY: auto-refresh only while something is happening
+def keep_live():                                                      
     busy = status in ("queued", "running")
-    if busy or (chaos and chaos.get("running")):
+    cooling = bool(chaos and chaos.get("cooldown_left_s"))           
+    if busy or (chaos and chaos.get("running")) or cooling:
         time.sleep(1.5 if busy else 4)
         st.rerun()
 
