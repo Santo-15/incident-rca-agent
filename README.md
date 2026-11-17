@@ -30,7 +30,7 @@ It diagnoses; it does **not** auto-fix. A human stays in charge of the fix.
 | Logs analyst | queries Loki, groups and names error patterns (never sends raw lines) | gpt-oss-20b |
 | Metrics analyst | checks ~10 Prometheus signals with a z-score against a 10-min baseline | no (plain Python) |
 | Deploy inspector → Code-diff reader | finds deploy tags just before the alert, reads the GitHub diff | diff only, gpt-oss-20b |
-| Incident memory | finds similar past incidents in Chroma (vector search) | no |
+| Past incidents (memory) | finds similar past incidents in Chroma (vector search) | no |
 | Root-cause reasoner | weighs all evidence, picks one cause from 12 labels, with confidence | gpt-oss-120b |
 | Critic | checks the answer against the evidence; can send it back for a rethink | gpt-oss-120b |
 | Reporter | writes a markdown report with the playbook fix | no |
@@ -43,7 +43,7 @@ Groq is the primary LLM provider, with an automatic fallback to Gemini. Every ru
 ![Containers](docs/diagrams/02-container-diagram.png)
 
 - `agent/api.py`: FastAPI. It receives the Alertmanager webhook (202 Accepted), de-duplicates by alert group, and runs the diagnosis in a background worker (one at a time, to respect free-tier limits). It streams per-agent progress through LangGraph's `stream()`. It also exposes guarded chaos endpoints for the demo: one outage at a time, auto-restore, a 10-min cooldown, and at most 8 outages per 24 h (HTTP 429).
-- `ui/app.py`: a Streamlit dashboard that only talks to the API. It shows the live investigation timeline, the verdict and the evidence.
+- - `ui/app.py`: a Streamlit dashboard that only talks to the API. It shows a progress line, the agent graph (click an agent to see what it found, in plain language), the verdict, the evidence and the full report.
 
 ## Results
 12 chaos scenarios: 5 **known** (the playbook was written from them), 2 **variants**, 5 **unseen**. 50 Locust users. **One run per scenario**; LLM answers can differ between runs. Full write-up: [`eval/results.md`](eval/results.md).
@@ -123,7 +123,7 @@ python -m agent.memory_seed               # builds the Chroma memory of past inc
 uvicorn agent.api:app --host 0.0.0.0 --port 8001   # terminal 1: the agent API
 streamlit run ui/app.py                            # terminal 2: the dashboard → http://localhost:8501
 ```
-Pick a failure in the sidebar, press **Break it**, and watch. Re-run the evaluation with `python -m eval.run_eval`; recompute the numbers offline with `python -m eval.metrics` and `python -m eval.baselines`.
+Choose a failure, press **Break now**, and watch. Re-run the evaluation with `python -m eval.run_eval`; recompute the numbers offline with `python -m eval.metrics` and `python -m eval.baselines`.
 
 ## Tech stack and why
 - **LangGraph:** explicit graph with a parallel fan-out, a join, and a critic loop. The state reducer (`operator.add`) lets parallel agents append findings safely.
