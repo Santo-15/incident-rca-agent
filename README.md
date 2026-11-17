@@ -43,7 +43,7 @@ Groq is the primary LLM provider, with an automatic fallback to Gemini. Every ru
 ![Containers](docs/diagrams/02-container-diagram.png)
 
 - `agent/api.py`: FastAPI. It receives the Alertmanager webhook (202 Accepted), de-duplicates by alert group, and runs the diagnosis in a background worker (one at a time, to respect free-tier limits). It streams per-agent progress through LangGraph's `stream()`. It also exposes guarded chaos endpoints for the demo: one outage at a time, auto-restore, a 10-min cooldown, and at most 8 outages per 24 h (HTTP 429).
-- - `ui/app.py`: a Streamlit dashboard that only talks to the API. It shows a progress line, the agent graph (click an agent to see what it found, in plain language), the verdict, the evidence and the full report.
+- `ui/app.py`: a Streamlit dashboard that only talks to the API. It shows a progress line, the agent graph (click an agent to see what it found, in plain language), the verdict, the evidence and the full report.
 
 ## Results
 12 chaos scenarios: 5 **known** (the playbook was written from them), 2 **variants**, 5 **unseen**. 50 Locust users. **One run per scenario**; LLM answers can differ between runs. Full write-up: [`eval/results.md`](eval/results.md).
