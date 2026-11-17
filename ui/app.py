@@ -466,4 +466,39 @@ if pick:
 # ---------- verdict ----------
 if status == "done":
     h = inc["hypothesis"]
-    facts =
+    facts = "".join(f"<li>{esc(x)}</li>" for x in (h.get("evidence") or [])[:3])
+    release = f' · release {esc(h["deploy_tag"])}' if h.get("deploy_tag") else ""
+    show('<div class="sec">Verdict</div>')
+    show(f'<div class="verdict"><div><div class="k">Root cause</div><div class="cause">{esc(CAUSE.get(h["cause"], h["cause"]))}</div>'
+         f'<div class="code">{esc(h["cause"])}</div><span class="conf {esc(h["confidence"])}">{esc(h["confidence"])} confidence</span></div>'
+         f'<div><div class="k">What happened</div><div class="sum">{esc(h["summary"])}</div>'
+         f'<div class="meta">Diagnosed in {inc["agent_s"]} s · {inc.get("llm_calls")} AI calls{release}</div></div>'
+         f'<div><div class="k">Key facts</div><ul>{facts}</ul></div></div>')
+
+    @st.dialog("Full incident report", width="large")
+    def report_box():
+        st.markdown(inc.get("report") or "No report.")
+
+    @st.dialog("Raw Alertmanager payload", width="large")
+    def payload_box():
+        st.json(inc.get("payload") or {})
+
+    st.write("")
+    e1, e2, e3 = st.columns(3)
+    if e1.button("Evidence collected", key="evb", use_container_width=True):
+        st.session_state.ev = None if st.session_state.get("ev") else "logs"
+    if e2.button("Full incident report", key="repb", use_container_width=True):
+        report_box()
+    if e3.button("Raw Alertmanager payload", key="rawb", use_container_width=True):
+        payload_box()
+
+    tab = st.session_state.get("ev")
+    if tab:
+        t1, t2, t3, _ = st.columns([1, 1, 1, 1])
+        for col, (k, label) in zip((t1, t2, t3), (("logs", "Logs evidence"), ("metrics", "Metrics evidence"), ("deploys", "Deploys and code"))):
+            if col.button(label, key=f"ev_{'on' if tab == k else 'off'}_{k}", use_container_width=True):
+                st.session_state.ev = k
+                st.rerun()
+        rows = evidence(inc, "deploys") + evidence(inc, "diff") if tab == "deploys" else evidence(inc, tab)
+        items = "".join(f"<li>{esc(a)}" + (f"<br><small>{esc(b)}</small>" if b else "") + "</li>" for a, b in rows) or "<li>Nothing found</li>"
+        show(f'<div class="box"><ul>{items}</ul></div>')
