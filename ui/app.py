@@ -39,6 +39,7 @@ header[data-testid="stHeader"] {background:transparent;}
 .pill.live {border-color:rgba(239,68,68,.5); color:#fca5a5;}
 .pill.ok {border-color:rgba(34,197,94,.45); color:#86efac;}
 .sec {font-size:.95rem; font-weight:700; color:var(--mute); text-transform:uppercase; letter-spacing:.14em; margin:2rem 0 .8rem;}
+.pick {font-size:.9rem; color:var(--mute); text-align:right; white-space:nowrap;}
 .left {text-align:center; color:var(--mute); font-size:1rem; margin-top:.3rem;}
 .st-key-brk button {background:var(--red) !important; border:0 !important; color:#fff !important; font-weight:700 !important; font-size:1.05rem !important; padding:.65rem 0 !important;}
 .st-key-brk button:disabled {background:#3b2430 !important; color:#8b6b75 !important;}
@@ -347,7 +348,9 @@ with right:
 _, ctr, _ = st.columns([1, 1.2, 1])
 with ctr:
     ids = [s["id"] for s in chaos.get("scenarios", [])]
-    sid = st.selectbox("Choose a failure", ids, format_func=lambda i: FAILURE.get(i, i), disabled=bool(running))
+    lc, sc = st.columns([.3, 1], vertical_alignment="center")
+    lc.markdown('<div class="pick">Choose a failure</div>', unsafe_allow_html=True)
+    sid = sc.selectbox("Choose a failure", ids, format_func=lambda i: FAILURE.get(i, i), disabled=bool(running), label_visibility="collapsed")   # KEY: label shown on the left instead
     b1, b2 = st.columns(2)
     blocked = bool(running) or chaos.get("cooldown_left_s", 0) > 0 or chaos.get("runs_left", 1) == 0 or not ids
     if b1.button("Break now", key="brk", disabled=blocked, use_container_width=True):
