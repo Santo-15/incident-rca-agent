@@ -29,7 +29,7 @@ header[data-testid="stHeader"] {background:transparent;}
 .topl {display:flex; align-items:center; gap:.5rem; font-size:1.05rem; color:var(--ink); padding-top:.6rem;}
 .dot {width:10px; height:10px; border-radius:50%; background:var(--green); box-shadow:0 0 10px var(--green);}
 .dot.off {background:var(--red); box-shadow:0 0 10px var(--red);}
-.title {text-align:center;}
+.title {text-align:center; margin-bottom:1.6rem;}
 .title h1 {font-size:2.3rem; font-weight:800; color:var(--ink); margin:0 !important; padding:0 !important; line-height:1.15; letter-spacing:-.02em;}
 .title h1 a, .title [data-testid="stHeaderActionElements"] {display:none !important;}
 .title p {color:var(--mute); font-size:1.1rem; margin:.15rem 0 0 !important; padding:0 !important;}
@@ -39,7 +39,10 @@ header[data-testid="stHeader"] {background:transparent;}
 .pill.live {border-color:rgba(239,68,68,.5); color:#fca5a5;}
 .pill.ok {border-color:rgba(34,197,94,.45); color:#86efac;}
 .sec {font-size:.95rem; font-weight:700; color:var(--mute); text-transform:uppercase; letter-spacing:.14em; margin:2rem 0 .8rem;}
-.pick {font-size:.9rem; color:var(--mute); text-align:right; white-space:nowrap;}
+.pick {font-size:.95rem; color:var(--mute); height:2.9rem; display:flex; align-items:center; white-space:nowrap;}
+[data-testid="stSelectbox"] div[role="group"] {background:#1e3a5f !important; border:1px solid rgba(96,165,250,.6) !important; border-radius:10px !important; min-height:2.9rem;}
+[data-testid="stSelectbox"] input {text-align:center !important; color:#ffffff !important; font-weight:500 !important; cursor:pointer;}
+[data-testid="stSelectbox"] svg {color:#ffffff !important; width:1.6rem !important; height:1.6rem !important;}
 .left {text-align:center; color:var(--mute); font-size:1rem; margin-top:.3rem;}
 .st-key-brk button {background:var(--red) !important; border:0 !important; color:#fff !important; font-weight:700 !important; font-size:1.05rem !important; padding:.65rem 0 !important;}
 .st-key-brk button:disabled {background:#3b2430 !important; color:#8b6b75 !important;}
@@ -345,12 +348,12 @@ with right:
     ticker()
 
 # ---------- controls ----------
-_, ctr, _ = st.columns([1, 1.2, 1])
+_, ctr, rgt = st.columns([1, 1.2, 1])
+with rgt:
+    show('<div class="pick">← Choose a failure</div>')               # small label to the right of the dropdown
 with ctr:
     ids = [s["id"] for s in chaos.get("scenarios", [])]
-    lc, sc = st.columns([.3, 1], vertical_alignment="center")
-    lc.markdown('<div class="pick">Choose a failure</div>', unsafe_allow_html=True)
-    sid = sc.selectbox("Choose a failure", ids, format_func=lambda i: FAILURE.get(i, i), disabled=bool(running), label_visibility="collapsed")   # KEY: label shown on the left instead
+    sid = st.selectbox("Choose a failure", ids, format_func=lambda i: FAILURE.get(i, i), disabled=bool(running), label_visibility="collapsed")
     b1, b2 = st.columns(2)
     blocked = bool(running) or chaos.get("cooldown_left_s", 0) > 0 or chaos.get("runs_left", 1) == 0 or not ids
     if b1.button("Break now", key="brk", disabled=blocked, use_container_width=True):
