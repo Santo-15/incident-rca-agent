@@ -1,8 +1,8 @@
 .env
 .venv/
 __pycache__/
-*.pyc*:Zone.Identifier
+*.pyc
+.pytest_cache/
 *:Zone.Identifier
 chaos/runs.log
-*:Zone.Identifier
 data/
