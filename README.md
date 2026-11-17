@@ -6,7 +6,11 @@ A multi-agent root-cause analysis (RCA) system built with LangGraph. When an ale
 
 ![Live investigation](docs/screenshots/ui-solved.png)
 
-> Demo video: coming soon · Live demo: on request (runs on AWS; the VM is started for demos to save credits)
+
+https://github.com/user-attachments/assets/7657d1bf-206b-49b9-bb29-9baffd94a523
+
+
+> Live demo: on request (runs on AWS; the VM is started for demos to save credits)
 
 ## The problem
 When production breaks, an on-call engineer spends roughly 45–60 minutes jumping between dashboards, log searches and recent deploys before they even know *what* broke. Customers see errors the whole time.
