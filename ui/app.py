@@ -1,83 +1,90 @@
-# Streamlit UI for the RCA agent: live investigation dashboard. Reads the API only; never runs the agent itself.
+# Streamlit UI for the RCA agent: one-screen live view of a break and its investigation. Reads the API only; never runs the agent itself.
 import html
+import json
 import os
 import re
 import time
+from datetime import datetime
 
 import httpx
 import streamlit as st
 
 API = os.getenv("RCA_API_URL", "http://127.0.0.1:8001")             # KEY: one setting; the cloud deploy changes this, not the code
-EVAL_CHIP = "91% top-1 on 11 chaos incidents"                        # from eval/results.md (final run)
 
-st.set_page_config(page_title="Incident RCA Agent", page_icon="🩺", layout="wide")
+st.set_page_config(page_title="Incident RCA Agent", page_icon="🩺", layout="wide", initial_sidebar_state="collapsed")
 
 CSS = """<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
-html, body, .stApp, .stMarkdown, p, li {font-family:'Inter',sans-serif;}
-.stApp {background: radial-gradient(1000px 500px at 0% -10%, #0e2a3a 0%, #0a0e13 60%) fixed;}
-.block-container {padding-top:2rem; max-width:1300px;}
-[data-testid="stSidebar"] {background:#0c1218; border-right:1px solid #1a2430;}
-.hero h1 {font-size:2.2rem; font-weight:800; margin:0; background:linear-gradient(90deg,#00e5a0,#38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent;}
-.hero p {color:#8b9db0; margin:.35rem 0 0 0; font-size:1rem; max-width:820px;}
-.chips {display:flex; gap:.45rem; flex-wrap:wrap; margin-top:.8rem;}
-.chip {font-size:.76rem; padding:.25rem .65rem; border:1px solid #1d2835; border-radius:999px; color:#a9b8c8; background:#0e151d;}
-.chip b {color:#00e5a0; font-weight:600;}
-.dot {display:inline-block; width:8px; height:8px; border-radius:50%; background:#00e5a0; margin-right:6px; box-shadow:0 0 8px #00e5a0;}
-.dot.off {background:#f43f5e; box-shadow:0 0 8px #f43f5e;}
-.h {font-size:.74rem; font-weight:600; color:#6f8399; text-transform:uppercase; letter-spacing:.14em; margin:1.6rem 0 .7rem;}
-.banner {display:flex; align-items:center; gap:1rem; padding:1.1rem 1.4rem; border-radius:16px; margin-top:1.4rem; border:1px solid;}
-.banner .big {font-size:1.35rem; font-weight:700; color:#eef5fb;}
-.banner .small {font-size:.9rem; color:#a9b8c8; margin-top:.15rem;}
-.banner .ico {font-size:1.9rem;}
-.b-settle {background:linear-gradient(90deg,rgba(245,158,11,.14),rgba(245,158,11,.03)); border-color:rgba(245,158,11,.35);}
-.b-run {background:linear-gradient(90deg,rgba(56,189,248,.16),rgba(56,189,248,.03)); border-color:rgba(56,189,248,.4); animation:glow 1.6s ease-in-out infinite;}
-.b-done {background:linear-gradient(90deg,rgba(0,229,160,.15),rgba(0,229,160,.03)); border-color:rgba(0,229,160,.4);}
-.b-fail {background:linear-gradient(90deg,rgba(244,63,94,.15),rgba(244,63,94,.03)); border-color:rgba(244,63,94,.4);}
-.b-idle {background:#0e151d; border-color:#1d2835;}
-@keyframes glow {0%,100% {box-shadow:0 0 0 rgba(56,189,248,0);} 50% {box-shadow:0 0 28px rgba(56,189,248,.25);}}
-.cause-inline {font-family:'JetBrains Mono',monospace; color:#00e5a0;}
-.tl {position:relative; padding-left:.2rem;}
-.step {display:flex; gap:.9rem; position:relative; padding-bottom:1rem;}
-.step:not(:last-child)::before {content:''; position:absolute; left:19px; top:42px; bottom:0; width:2px; background:#1d2835;}
-.step.done:not(:last-child)::before {background:linear-gradient(#00e5a0,#1d2835);}
-.ic {width:40px; height:40px; min-width:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; background:#0e151d; border:1px solid #1d2835;}
-.step.done .ic {border-color:rgba(0,229,160,.5); background:rgba(0,229,160,.08);}
-.step.run .ic {border-color:#38bdf8; animation:glow 1.2s ease-in-out infinite;}
-.step.todo {opacity:.38;}
-.step.warn .ic {border-color:#f59e0b; background:rgba(245,158,11,.1);}
-.step.think .ic {border-color:rgba(167,139,250,.6); background:rgba(167,139,250,.1);}
-.body {flex:1; padding-top:.15rem;}
-.hd {display:flex; align-items:center; gap:.55rem; flex-wrap:wrap;}
-.hd b {color:#e8f0f8; font-weight:600; font-size:.95rem;}
-.tm {font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#5d7084;}
-.m {font-family:'JetBrains Mono',monospace; font-size:.68rem; color:#c4b5fd; border:1px solid #4c3d85; background:rgba(124,92,255,.1); border-radius:6px; padding:.05rem .45rem;}
-.tag {font-size:.68rem; color:#7fd9b9; border:1px solid rgba(0,229,160,.35); border-radius:6px; padding:.05rem .45rem;}
-.tx {color:#a9b8c8; font-size:.88rem; margin-top:.2rem; line-height:1.45;}
-.tx .k {color:#e8f0f8;}
-.card {background:#0e151d; border:1px solid #1d2835; border-radius:16px; padding:1.2rem 1.35rem;}
-.lbl {font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; color:#6f8399;}
-.cause {font-family:'JetBrains Mono',monospace; font-size:1.9rem; font-weight:600; color:#00e5a0; margin:.2rem 0 .5rem; word-break:break-word;}
-.cause.unk {color:#f59e0b;}
-.summary {color:#c9d6e3; font-size:.95rem; line-height:1.55;}
-.badge {font-size:.68rem; font-weight:600; padding:.15rem .55rem; border-radius:6px; margin-left:.5rem; vertical-align:middle; letter-spacing:.06em; text-transform:uppercase;}
-.c-high {background:rgba(0,229,160,.12); color:#00e5a0; border:1px solid rgba(0,229,160,.4);}
-.c-medium {background:rgba(245,158,11,.12); color:#f59e0b; border:1px solid rgba(245,158,11,.4);}
-.c-low {background:rgba(244,63,94,.12); color:#f43f5e; border:1px solid rgba(244,63,94,.4);}
-.ev {margin:.8rem 0 0 0; padding-left:1.1rem; color:#a9b8c8; font-size:.86rem; line-height:1.55;}
-.rethink {margin-top:.7rem; font-size:.85rem; color:#c4b5fd;}
-.stats {display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-top:1rem;}
-.stat {background:#0a1016; border:1px solid #1a2430; border-radius:12px; padding:.7rem .85rem;}
-.stat .v {font-family:'JetBrains Mono',monospace; font-size:1.3rem; color:#eef5fb;}
-.stat .k {font-size:.66rem; color:#6f8399; text-transform:uppercase; letter-spacing:.1em;}
-.colhead {font-size:.8rem; font-weight:600; color:#e8f0f8; margin-bottom:.6rem;}
-.f {border-left:3px solid #2c3b4c; background:#0e151d; border-radius:10px; padding:.6rem .8rem; margin-bottom:.5rem;}
-.f.high {border-left-color:#f43f5e;} .f.medium {border-left-color:#f59e0b;}
-.f .s {font-size:.86rem; color:#e8f0f8; font-weight:500;}
-.f .d {font-family:'JetBrains Mono',monospace; font-size:.7rem; color:#71859a; margin-top:.3rem; word-break:break-word;}
-.empty {color:#5d7084; font-size:.82rem; font-style:italic;}
-.how {display:grid; grid-template-columns:repeat(3,1fr); gap:.8rem; margin-top:1rem;}
-.how .card b {color:#e8f0f8;} .how .card span {color:#8b9db0; font-size:.88rem;}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root {--bg:#0b1220; --card:#111a2b; --line:#22304a; --ink:#e8eef7; --mute:#94a3b8; --green:#22c55e; --amber:#f5b83d; --red:#ef4444; --blue:#3b82f6;}
+html, body, .stApp, .stMarkdown, p, li, button, input {font-family:'Inter',sans-serif !important;}
+.stApp {background:var(--bg);}
+[data-testid="stSelectbox"] * {font-size:1.08rem !important;}
+div[class*="st-key-n_"] button p {font-size:1.08rem !important; font-weight:600 !important;}
+div[class*="st-key-n_"][class*="_memory"] button p {font-size:1rem !important;}
+.st-key-brk button p, .st-key-rst button p {font-size:1.1rem !important; font-weight:700 !important;}
+.st-key-evb button p, .st-key-repb button p, .st-key-rawb button p {font-size:1.05rem !important; font-weight:600 !important;}
+div[class*="st-key-ev_"] button p {font-size:1rem !important;}
+header[data-testid="stHeader"] {background:transparent;}
+.block-container {padding:1rem 2.5rem 2rem; max-width:100% !important;}
+.topl {display:flex; align-items:center; gap:.5rem; font-size:1.05rem; color:var(--ink); padding-top:.6rem;}
+.dot {width:10px; height:10px; border-radius:50%; background:var(--green); box-shadow:0 0 10px var(--green);}
+.dot.off {background:var(--red); box-shadow:0 0 10px var(--red);}
+.title {text-align:center;}
+.title h1 {font-size:2.3rem; font-weight:800; color:var(--ink); margin:0; letter-spacing:-.02em;}
+.title p {color:var(--mute); font-size:1.1rem; margin:.3rem 0 0;}
+.timer {text-align:right; padding-top:.5rem;}
+.pill {display:inline-block; font-size:1.05rem; font-weight:600; padding:.4rem .9rem; border-radius:999px; border:1px solid var(--line); color:var(--ink); background:var(--card);}
+.pill.wait {border-color:rgba(245,184,61,.5); color:var(--amber);}
+.pill.live {border-color:rgba(239,68,68,.5); color:#fca5a5;}
+.pill.ok {border-color:rgba(34,197,94,.45); color:#86efac;}
+.sec {font-size:.95rem; font-weight:700; color:var(--mute); text-transform:uppercase; letter-spacing:.14em; margin:2rem 0 .8rem;}
+.left {text-align:center; color:var(--mute); font-size:1rem; margin-top:.3rem;}
+.st-key-brk button {background:var(--red) !important; border:0 !important; color:#fff !important; font-weight:700 !important; font-size:1.05rem !important; padding:.65rem 0 !important;}
+.st-key-brk button:disabled {background:#3b2430 !important; color:#8b6b75 !important;}
+.st-key-rst button {background:var(--card) !important; border:1px solid var(--line) !important; color:var(--ink) !important; font-weight:600 !important; font-size:1.05rem !important; padding:.65rem 0 !important;}
+.st-key-rst button:disabled {color:#4b5a70 !important;}
+.track {display:flex; align-items:flex-start; margin:.4rem 0 .2rem;}
+.stop {display:flex; flex-direction:column; align-items:center; width:150px; min-width:150px;}
+.ball {width:22px; height:22px; border-radius:50%; border:3px solid #33415a; background:var(--bg);}
+.stop.done .ball {background:var(--green); border-color:var(--green); box-shadow:0 0 12px rgba(34,197,94,.6);}
+.stop.now .ball {border-color:var(--amber); animation:pulse 1.2s ease-in-out infinite;}
+.stop .nm {margin-top:.55rem; font-size:1.05rem; color:var(--mute); text-align:center;}
+.stop.done .nm, .stop.now .nm {color:var(--ink); font-weight:600;}
+.seg {flex:1; display:flex; flex-direction:column; align-items:center; padding-top:9px;}
+.seg .bar {height:4px; width:100%; background:#22304a; border-radius:2px;}
+.seg.done .bar {background:var(--green);}
+.seg .dur {font-size:1rem; color:var(--mute); margin-top:.45rem;}
+@keyframes pulse {0%,100% {box-shadow:0 0 0 rgba(245,184,61,0);} 50% {box-shadow:0 0 16px rgba(245,184,61,.8);}}
+.arrow {text-align:center; color:#4b5a70; font-size:1.5rem;}
+.par {font-size:.9rem; color:var(--mute); text-align:center; letter-spacing:.08em; text-transform:uppercase; margin-bottom:.2rem;}
+.model {text-align:center; font-size:.9rem; color:#a5b4fc; margin:-.35rem 0 .35rem;}
+.note {text-align:center; font-size:.9rem; color:var(--mute); margin-top:-.2rem;}
+div[class*="st-key-n_"] button {width:100%; min-height:3.4rem; border-radius:12px !important; font-weight:600 !important; font-size:1.08rem !important; transition:all .2s;}
+div[class*="st-key-n_todo_"] button {border:1.5px solid rgba(245,184,61,.55) !important; background:rgba(245,184,61,.07) !important; color:#fde68a !important;}
+div[class*="st-key-n_run_"] button {border:1.5px solid var(--amber) !important; background:rgba(245,184,61,.15) !important; color:#fde68a !important; animation:pulse 1.2s ease-in-out infinite;}
+div[class*="st-key-n_done_"] button {border:1.5px solid rgba(34,197,94,.7) !important; background:rgba(34,197,94,.12) !important; color:#dcfce7 !important;}
+div[class*="st-key-n_idle_"] button {border:1.5px solid var(--line) !important; background:var(--card) !important; color:var(--ink) !important;}
+div[class*="_sel_"] button {box-shadow:0 0 0 3px var(--blue) !important;}
+div[class*="st-key-n_"][class*="_memory"] button {border-style:dashed !important; min-height:2.8rem; font-size:1rem !important;}
+.box {background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.3rem; margin-top:1rem;}
+.box h4 {margin:0 0 .5rem; font-size:1.2rem; color:var(--ink);}
+.box .what {color:var(--mute); font-size:1.02rem; margin-bottom:.6rem;}
+.box ul {margin:0; padding-left:1.2rem;} .box li {color:var(--ink); font-size:1.08rem; line-height:1.6;}
+.box li small {color:var(--mute);}
+.banner {border-radius:14px; padding:1rem 1.3rem; margin-top:.6rem; font-size:1.12rem; border:1px solid var(--line); background:var(--card); color:var(--ink); text-align:center;}
+.banner.wait {border-color:rgba(245,184,61,.45);} .banner.bad {border-color:rgba(239,68,68,.5);}
+.verdict {display:grid; grid-template-columns:1.1fr 1.5fr 1.4fr; gap:1.6rem; background:var(--card); border:1px solid rgba(34,197,94,.45); border-radius:16px; padding:1.4rem 1.6rem;}
+.verdict .k {font-size:.88rem; color:var(--mute); text-transform:uppercase; letter-spacing:.12em; margin-bottom:.35rem;}
+.verdict .cause {font-size:1.75rem; font-weight:800; color:var(--green); line-height:1.25;}
+.verdict .code {font-size:.92rem; color:var(--mute); margin-top:.35rem;}
+.verdict .conf {display:inline-block; margin-top:.6rem; font-size:.88rem; font-weight:700; padding:.2rem .6rem; border-radius:6px; background:rgba(34,197,94,.12); color:var(--green); text-transform:uppercase; letter-spacing:.06em;}
+.verdict .conf.medium {background:rgba(245,184,61,.12); color:var(--amber);} .verdict .conf.low {background:rgba(239,68,68,.12); color:#fca5a5;}
+.verdict .sum {font-size:1.1rem; color:var(--ink); line-height:1.6;}
+.verdict ul {margin:0; padding-left:1.1rem;} .verdict li {color:var(--ink); font-size:1.05rem; line-height:1.55; margin-bottom:.3rem;}
+.verdict .meta {font-size:1rem; color:var(--mute); margin-top:.8rem;}
+.st-key-evb button, .st-key-repb button, .st-key-rawb button {background:var(--card) !important; border:1px solid var(--line) !important; color:var(--ink) !important; font-weight:600 !important; font-size:1.05rem !important; padding:.7rem 0 !important;}
+div[class*="st-key-ev_"] button {font-size:1rem !important; background:transparent !important; border:1px solid var(--line) !important; color:var(--mute) !important;}
+div[class*="st-key-ev_on_"] button {border-color:var(--blue) !important; color:var(--ink) !important; background:rgba(59,130,246,.12) !important;}
 </style>"""
 st.markdown(CSS, unsafe_allow_html=True)
 
@@ -108,199 +115,355 @@ def api_post(path: str) -> tuple[bool, str]:
         return False, str(exc)
 
 
-# ---------- plain-English names ----------
-METRIC = {"p95_by_path": "slow responses (p95)", "5xx_rate_by_path": "5xx errors", "pg_up": "Postgres down",
-          "redis_up": "Redis down", "shop_api_up": "shop-api not answering", "rss_mib": "memory use", "restarts": "container restarts",
-          "pg_connections_by_state": "DB connections", "pg_exporter_up": "Postgres not answering", "redis_exporter_up": "Redis not answering",
-          "pg_longest_tx_s": "long DB transaction", "pg_exclusive_locks": "DB locks", "seq_tup_read_products": "full table scans"}
+def ts(s):                                                            # ISO time from the API -> seconds since 1970 (None stays None)
+    return datetime.fromisoformat(s).timestamp() if s else None
 
 
-def human(sig: str) -> str:                                          # KEY: "p95_by_path{path=/users/{user_id}/cart}" -> "slow responses (p95) on /cart"
-    m = re.match(r"^(\w+)\{\w+=(.+)\}$", sig)
-    base, label = (m.group(1), m.group(2)) if m else (sig, None)
-    name = METRIC.get(base, base)
-    if label is None:
-        return name
-    path = label.replace("/users/{user_id}", "").replace("{product_id}", "{id}")
-    return f"{name} on {path}" if path.startswith("/") else f"{name} ({path})"
+def dur(sec: float) -> str:                                           # 95 -> "1m 35s"
+    sec = max(0, int(round(sec)))
+    return f"{sec // 60}m {sec % 60}s" if sec >= 60 else f"{sec}s"
 
 
-STEP = {  # graph node -> (icon, friendly name)
-    "triage": ("🧭", "Triage"), "logs_agent": ("📜", "Logs analyst"), "metrics_agent": ("📈", "Metrics analyst"),
-    "deploy_agent": ("🚀", "Deploy inspector"), "diff_agent": ("🔍", "Code-diff reader"), "memory": ("🧠", "Incident memory"),
-    "correlator": ("🤖", "Root-cause reasoner"), "critic": ("⚖️", "Critic"), "reporter": ("📝", "Reporter"), "llm": ("⚠️", "Model fallback"),
+# ---------- plain-language dictionaries (what a CEO can read) ----------
+FAILURE = {  # KEY: scenario id -> what the visitor is choosing to break
+    "bad_pool_config": "Bad release: database connection limit cut to 1", "kill_db": "Database crashes",
+    "memory_leak": "Bad release: memory leak", "redis_down": "Cart storage (Redis) crashes",
+    "postgres_hang": "Database freezes", "redis_hang": "Cart storage (Redis) freezes",
+    "shop_api_down": "Shop service stops", "db_lock": "A database table gets locked",
+    "redis_oom": "Cart storage runs out of memory", "wrong_service_address": "Bad release: wrong cart-storage address",
+    "code_exception": "Bad release: bug in checkout code", "slow_query": "A database query becomes slow",
 }
-ORDER = ["triage", "logs_agent", "metrics_agent", "deploy_agent", "diff_agent", "correlator", "critic", "reporter"]
+CAUSE = {  # root-cause label -> plain words
+    "db_pool_exhausted": "Database connection limit too small", "postgres_down": "The database is down",
+    "redis_down": "Cart storage (Redis) is down", "memory_leak": "Memory leak in the shop",
+    "slow_query": "A slow database query", "shop_api_down": "The shop service is down",
+    "db_lock": "A locked database table", "redis_out_of_memory": "Cart storage is full",
+    "wrong_service_address": "The shop points to the wrong address", "code_exception": "A bug in newly released code",
+    "insufficient_evidence": "Not enough evidence", "other": "Another cause",
+}
+ALERT = {  # Prometheus alert -> what the alarm means
+    "ShopApiDown": "the shop stopped responding", "PostgresDown": "the database went down", "RedisDown": "cart storage went down",
+    "ShopHigh5xxRatio": "more than 5% of customer requests started failing", "ShopHighLatency": "pages became slow",
+    "ShopApiHighMemory": "the shop is using too much memory", "ShopApiRestarted": "the shop crashed and restarted",
+}
+METRIC = {  # abnormal metric -> plain sentence ({area} = which part of the shop)
+    "shop_api_up": "The shop stopped answering", "pg_up": "The database went down", "redis_up": "Cart storage went down",
+    "pg_exporter_up": "The database stopped answering health checks", "redis_exporter_up": "Cart storage stopped answering health checks",
+    "p95_by_path": "Responses became slow on {area}", "5xx_rate_by_path": "Requests started failing on {area}",
+    "rss_mib": "The shop's memory use jumped", "restarts": "The shop crashed and restarted",
+    "pg_connections_by_state": "Database connections changed sharply", "pg_longest_tx_s": "A database operation ran far too long",
+    "pg_exclusive_locks": "Database tables got locked", "seq_tup_read_products": "The database started scanning whole tables",
+}
+NORMAL = {"pg_up": "database", "redis_up": "cart storage", "shop_api_up": "shop", "rss_mib": "memory", "restarts": "restarts",
+          "p95_by_path": "speed", "5xx_rate_by_path": "errors", "pg_connections_by_state": "DB connections",
+          "pg_exporter_up": "database checks", "redis_exporter_up": "cart storage checks", "pg_longest_tx_s": "DB operations",
+          "pg_exclusive_locks": "DB locks", "seq_tup_read_products": "table scans"}
+AREA = {"checkout": "checkout", "cart": "the cart", "products": "the product list", "health": "health checks"}
+
+NODES = {  # graph node -> (name, model if it uses an LLM, what it does)
+    "triage": ("Triage", None, "Reads the alarms and works out when the problem started."),
+    "logs_agent": ("Logs analyst", "gpt-oss-20b", "Searches the shop's logs for errors and groups them."),
+    "metrics_agent": ("Metrics analyst", None, "Compares about 10 health numbers with their normal values."),
+    "deploy_agent": ("Deploy inspector", None, "Checks whether a new version was released just before the problem."),
+    "diff_agent": ("Code-diff reader", "gpt-oss-20b", "Reads what that release changed in the code and settings."),
+    "memory": ("Past incidents", None, "Looks up similar incidents from the past."),
+    "correlator": ("Root-cause reasoner", "gpt-oss-120b", "Weighs all the evidence and names one root cause."),
+    "critic": ("Critic", "gpt-oss-120b", "Double-checks the answer; can send it back for a rethink."),
+    "reporter": ("Reporter", None, "Writes the incident report with the fix."),
+}
+NEEDS = {"triage": [], "logs_agent": ["triage"], "metrics_agent": ["triage"], "deploy_agent": ["triage"], "diff_agent": ["deploy_agent"],
+         "correlator": ["logs_agent", "metrics_agent", "diff_agent"], "memory": ["logs_agent", "metrics_agent", "diff_agent"],
+         "critic": ["correlator"], "reporter": ["critic"]}   # KEY: graph edges; a node can run once everything it needs is done
 
 
-def one_liner(e: dict) -> str:                                       # what this step concluded, in plain English
-    n, high, cnt = e["node"], [esc(human(s)) for s in e.get("high") or []], e.get("count", 0)
-    if n == "triage":
-        return esc(e["text"])
-    if n == "logs_agent":
-        return f'<span class="k">{cnt} error pattern(s)</span>' + (f" · {', '.join(high)}" if high else " · no errors in logs")
-    if n == "metrics_agent":
-        return f'<span class="k">{cnt} signal(s) checked with z-score</span>' + (f" · abnormal: {', '.join(high)}" if high else "")
-    if n == "deploy_agent":
-        return f'suspect deploy <span class="k">{high[0]}</span>' if high else "no deploy just before the alert"
-    if n == "diff_agent":
-        return (f"risky change: {', '.join(h.split(': ', 1)[-1] for h in high)}" if high else
-                ("nothing to diff" if cnt == 0 else f"{cnt} change(s), none risky"))
-    if n == "correlator":
-        return f'suspects <span class="cause-inline">{esc(e.get("cause"))}</span> · {esc(e.get("confidence"))} confidence'
-    if n == "critic":
-        t = str(e["text"]).replace("verdict → ", "")
-        return "approved the diagnosis" if t.startswith("ok") else f"rejected it, asked for a rethink: {esc(t[5:])}"
-    if n == "memory":
-        return esc(e["text"]).replace("similar past incident:", "seen something like this before:")
-    if n == "reporter":
-        return "wrote the incident report"
-    return esc(e["text"])
+def area(path: str) -> str:                                           # "/users/{user_id}/checkout" -> "checkout"
+    parts = [p for p in path.split("/") if p and not p.startswith("{")]
+    return AREA.get(parts[-1], parts[-1]) if parts else "the shop"
+
+
+def say_log(f: dict) -> str:
+    sig, d = f["signal"], f["detail"]
+    if sig == "no error logs":
+        return "No errors in the shop's logs"
+    if sig == "logs unavailable":
+        return "The logs could not be read"
+    if sig.startswith("slow requests"):
+        return "Some requests took more than 1 second"
+    m = re.match(r"^(\d+)x on ([^:]+): (.*)$", d)                     # KEY: "538x on /users/{user_id}/checkout: KeyError: 'N'"
+    if m:
+        n, paths, err = m.groups()
+        kind = re.match(r"^(\w+(?:Error|Exception))\b", err)
+        what = kind.group(1) if kind else " ".join(err.split()[:6])
+        return f"{what} in {area(paths.split(',')[0].strip())} · {n} failed requests"
+    return sig[:1].upper() + sig[1:]
+
+
+def say_metric(f: dict) -> str:
+    sig, d = f["signal"], f["detail"]
+    if sig == "normal signals":
+        names = []
+        for part in d.split(","):
+            n = NORMAL.get(re.split(r"[{=]", part.strip())[0])
+            if n and n not in names:
+                names.append(n)
+        return "Normal: " + ", ".join(names) if names else "Other health numbers were normal"
+    if sig == "metrics unavailable":
+        return "Some health numbers could not be read"
+    m = re.match(r"^(\w+)(?:\{\w+=(.+)\})?$", sig)
+    base, label = (m.group(1), m.group(2)) if m else (sig, None)
+    text = METRIC.get(base, base)
+    return text.replace("{area}", area(label) if label else "the shop")
+
+
+def say_deploy(f: dict) -> str:
+    sig, d = f["signal"], f["detail"]
+    if sig == "no recent deploy":
+        return "No new version was released before the problem, which points to an infrastructure issue"
+    if sig == "deploys unavailable":
+        return "The release history could not be read"
+    m = re.search(r"deployed at (\S+), ([\d.]+) min (before|after) the first alert", d)
+    if m:
+        return f"A new version went live at {m.group(1)} UTC, {m.group(2)} min {m.group(3)} the problem started"
+    return d
+
+
+def say_diff(f: dict) -> tuple[str, str]:                             # (plain line, small technical line)
+    sig = f["signal"]
+    if sig == "no shop changes":
+        return "The release did not change the shop's code or settings", ""
+    if sig == "diff unavailable":
+        return "The code change could not be read", ""
+    if sig == "changed files":
+        return "The release changed some files, none clearly risky", ""
+    return "The release changed: " + sig.split(": ", 1)[-1], f["detail"]
+
+
+SAY = {"logs": say_log, "metrics": say_metric, "deploys": say_deploy}
+
+
+def evidence(inc: dict, source: str) -> list[tuple[str, str]]:        # plain lines for one evidence tab, most important first
+    rank = {"high": 0, "medium": 1, "low": 2}
+    rows = sorted((f for f in inc.get("findings") or [] if f["source"] == source), key=lambda f: rank.get(f["severity"], 3))
+    out = []
+    for f in rows:
+        line = say_diff(f) if source == "diff" else (SAY[source](f), "")
+        if line[0] not in [o[0] for o in out]:
+            out.append(line)
+    return out
+
+
+def node_lines(node: str, inc: dict) -> list[tuple[str, str]]:       # what one agent found, in plain words
+    trace = inc.get("trace") or []
+    if node == "triage":
+        fired = [a.get("labels", {}).get("alertname") for a in (inc.get("payload") or {}).get("alerts", [])]
+        fired = [ALERT.get(a, a) for a in dict.fromkeys(fired) if a]
+        e = next((e for e in trace if e["node"] == "triage"), {})
+        quiet = re.search(r"(\d+) known alerts silent", e.get("text", ""))
+        out = [(f"{len(fired)} alarm(s) went off: " + "; ".join(fired), "")] if fired else []
+        if quiet:
+            out.append((f"{quiet.group(1)} other alarms stayed quiet, which helps rule out other causes", ""))
+        return out
+    if node == "logs_agent":
+        return evidence(inc, "logs")
+    if node == "metrics_agent":
+        return evidence(inc, "metrics")
+    if node == "deploy_agent":
+        return evidence(inc, "deploys")
+    if node == "diff_agent":
+        return evidence(inc, "diff") or [("No release to read", "")]
+    if node == "memory":
+        e = next((e for e in trace if e["node"] == "memory"), None)
+        hits = re.findall(r"→ (\w+) \(distance", e["text"]) if e else []
+        return [(f"This looks like a past incident: {CAUSE.get(hits[0], hits[0]).lower()}", "")] if hits else [("No similar past incident", "")]
+    if node == "correlator":
+        tries = inc.get("hypotheses") or []
+        h = inc.get("hypothesis") or {}
+        out = []
+        if len(tries) > 1 and tries[0].get("cause") != tries[-1].get("cause"):
+            out.append((f"First guess was {CAUSE.get(tries[0]['cause'], tries[0]['cause']).lower()}, then changed its mind after the critic's feedback", ""))
+        out.append((f"Concluded: {CAUSE.get(h.get('cause'), h.get('cause'))} ({h.get('confidence')} confidence)", ""))
+        return out
+    if node == "critic":
+        verdicts = [str(e["text"]).replace("verdict → ", "") for e in trace if e["node"] == "critic"]
+        if any(not v.startswith("ok") for v in verdicts):
+            return [("Rejected the first answer as weak and asked for a rethink, then approved the revised one", "")]
+        return [("Checked the conclusion against the evidence and approved it", "")]
+    if node == "reporter":
+        return [("Wrote the incident report with the recommended fix (see Full incident report below)", "")]
+    return []
 
 
 # ---------- data ----------
 health = api_get("/health")
+chaos = api_get("/chaos") or {}
 incidents = api_get("/incidents") or []
-chaos = None
+inc = api_get(f"/incidents/{incidents[0]['id']}") if incidents else None    # KEY: the screen follows the latest incident only
 
-with st.sidebar:
-    up = '<span class="dot"></span>API online' if health else '<span class="dot off"></span>API offline'
-    show(f'<div class="chip">{up}</div>')
-    show('<div class="h">Break something</div>')
-    chaos = api_get("/chaos")
-    if chaos:
-        if chaos["running"]:
-            st.error(f"💥 **{chaos['running']}** is live · auto-restores after {chaos['chaos_s'] // 60} min")
-            if st.button("🛠 Restore now", use_container_width=True):
-                api_post("/chaos/stop")
-                st.rerun()
+broke_at = ts(chaos.get("started"))
+running = chaos.get("running")
+new_break = bool(broke_at and (not inc or ts(inc["received_at"]) < broke_at))   # KEY: a break newer than the latest incident = its alarm hasn't arrived yet
+if new_break:
+    inc = None                                                        # don't show the previous incident while the new break is live
+status = inc["status"] if inc else ("breaking" if new_break and running else "missed" if new_break else "idle")
+
+
+def signature(chaos: dict, incidents: list, inc: dict | None) -> str:  # anything that should redraw the whole page
+    top = incidents[0] if incidents else {}
+    return json.dumps([chaos.get("running"), chaos.get("started"), chaos.get("cooldown_left_s", 0) > 0, chaos.get("runs_left"),
+                       top.get("id"), top.get("status"), len((inc or {}).get("trace") or [])])
+
+
+st.session_state["sig"] = signature(chaos, incidents, inc)
+
+
+# ---------- top bar ----------
+left, mid, right = st.columns([1, 2, 1])
+with left:
+    show(f'<div class="topl"><span class="dot{"" if health else " off"}"></span>{"API online" if health else "API offline"}</div>')
+with mid:
+    show('<div class="title"><h1>Incident RCA Agent</h1><p>Break a live shop, then watch AI agents find out why.</p></div>')
+with right:
+    @st.fragment(run_every=1)                                         # KEY: only this small part re-runs every second
+    def ticker():
+        c = api_get("/chaos") or {}
+        incs = api_get("/incidents") or []
+        cur = api_get(f"/incidents/{incs[0]['id']}") if incs and incs[0]["status"] == "running" else (inc if incs and inc and incs[0]["id"] == inc["id"] else None)
+        if signature(c, incs, cur) != st.session_state.get("sig"):
+            st.rerun()                                                # KEY: something changed (alarm arrived, step done) -> redraw the page
+        if c.get("running"):
+            end = ts(c["started"]) + c.get("chaos_s", 420)
+            show(f'<div class="timer"><span class="pill live">Outage live · auto-fix in {dur(end - time.time())}</span></div>')
+        elif c.get("cooldown_left_s"):
+            show(f'<div class="timer"><span class="pill wait">Next break in {dur(c["cooldown_left_s"])}</span></div>')
         else:
-            opts = {s["id"]: f"{s['id']} · {s['kind']}" for s in chaos["scenarios"]}
-            sid = st.selectbox("Failure to inject", list(opts), format_func=opts.get)
-            st.caption(next(s["note"] for s in chaos["scenarios"] if s["id"] == sid))
-            wait = chaos["cooldown_left_s"]
-            if st.button("💥 Break it", disabled=wait > 0 or chaos.get("runs_left", 1) == 0, use_container_width=True, type="primary"):
-                ok, msg = api_post(f"/chaos/{sid}")
-                if ok:
-                    st.rerun()
-                st.error(msg)
-            st.caption(f"{chaos.get('runs_left', '?')} demo outages left today")   # daily cap, visible to visitors
-            if wait:
-                st.caption(f"Cooling down {wait // 60}m {wait % 60}s so the agent gets a clean 10-min baseline.")
-            if chaos["last_exit"] not in (None, 0, 130):
-                st.warning("Last scenario failed: see /tmp/rca_chaos.log (deploy scenarios need a clean git tree).")
-    pick = None
-    if incidents:
-        show('<div class="h">Incidents</div>')
-        ICON = {"queued": "🟠", "running": "🔵", "done": "🟢", "failed": "🔴"}
-        labels = {i["id"]: f"{ICON.get(i['status'], '')} {i['cause'] or i['status']} · {i['received_at'][11:16]}" for i in incidents}
-        pick = st.radio("Incidents", list(labels), format_func=labels.get, label_visibility="collapsed")   # newest first = auto-picks a new one
+            show('<div class="timer"><span class="pill ok">Ready</span></div>')
+    ticker()
 
-inc = api_get(f"/incidents/{pick}") if pick else None
-status = inc["status"] if inc else "idle"
-trace = (inc or {}).get("trace") or []
-
-
-def keep_live():                                                      
-    busy = status in ("queued", "running")
-    cooling = bool(chaos and chaos.get("cooldown_left_s"))           
-    if busy or (chaos and chaos.get("running")) or cooling:
-        time.sleep(1.5 if busy else 4)
+# ---------- controls ----------
+_, ctr, _ = st.columns([1, 1.2, 1])
+with ctr:
+    ids = [s["id"] for s in chaos.get("scenarios", [])]
+    sid = st.selectbox("Choose a failure", ids, format_func=lambda i: FAILURE.get(i, i), disabled=bool(running))
+    b1, b2 = st.columns(2)
+    blocked = bool(running) or chaos.get("cooldown_left_s", 0) > 0 or chaos.get("runs_left", 1) == 0 or not ids
+    if b1.button("Break now", key="brk", disabled=blocked, use_container_width=True):
+        ok, msg = api_post(f"/chaos/{sid}")
+        if ok:
+            st.rerun()
+        st.error(msg)
+    if b2.button("Restore", key="rst", disabled=not running, use_container_width=True):
+        api_post("/chaos/stop")
         st.rerun()
+    show(f'<div class="left">{chaos.get("runs_left", "–")} breaks left today</div>')
 
+# ---------- progress line ----------
+received = ts(inc["received_at"]) if inc else None
+start = broke_at if broke_at and (received is None or 0 <= received - broke_at < 3600) and status != "idle" else None
+rca = ts(inc.get("started_at")) if inc else None
+cause_t = None
+if inc and status == "done":
+    ok_e = next((e for e in inc.get("trace") or [] if e["node"] == "critic" and str(e["text"]).startswith("verdict → ok")), None)
+    cause_t = rca + (ok_e["t"] if ok_e else inc.get("agent_s", 0))
+done_t = ts(inc.get("finished_at")) if inc and status == "done" else None
+stops = [("Process started", start), ("Alert fired", received), ("RCA started", rca), ("Cause identified", cause_t), ("Process completed", done_t)]
+if status in ("breaking", "missed") and start is None:
+    stops[0] = ("Process started", broke_at)
+first_open = next((i for i, (_, t) in enumerate(stops) if t is None), len(stops))
+html_track = ""
+for i, (name, t) in enumerate(stops):
+    is_done = t is not None or (i == 0 and status not in ("idle",))
+    cls = "done" if is_done else ("now" if i == first_open and status in ("breaking", "queued", "running") else "")
+    html_track += f'<div class="stop {cls}"><div class="ball"></div><div class="nm">{name}</div></div>'
+    if i < len(stops) - 1:
+        nxt = stops[i + 1][1]
+        label = dur(nxt - t) if t is not None and nxt is not None else ""
+        html_track += f'<div class="seg {"done" if nxt is not None else ""}"><div class="bar"></div><div class="dur">{label}</div></div>'
+show('<div class="sec">Progress</div>')
+show(f'<div class="track">{html_track}</div>')
 
-# ---------- hero ----------
-done = [i for i in incidents if i["status"] == "done"]
-avg = f"{sum(i['agent_s'] for i in done) / len(done):.1f} s" if done else "–"
-show('<div class="hero"><h1>Incident RCA Agent</h1>'
-     '<p>Break a live system, then watch a team of AI agents read its logs, metrics and deploys, argue about the cause, and explain what broke, in seconds.</p>'
-     f'<div class="chips"><span class="chip">avg diagnosis <b>{avg}</b></span><span class="chip">eval <b>{EVAL_CHIP}</b></span>'
-     '<span class="chip">LangGraph · Groq · Gemini · Chroma · Prometheus · Loki</span></div></div>')
-
-# ---------- status banner ----------
-if not inc:
-    running = chaos and chaos.get("running")
-    show('<div class="banner b-idle"><div class="ico">' + ("💥" if running else "🛰️") + '</div><div><div class="big">'
-         + (f"{esc(running)} injected, waiting for the first alert…" if running else "All systems healthy")
-         + '</div><div class="small">' + ("Prometheus is noticing the failure; Alertmanager will call the agent." if running else "Pick a failure in the sidebar and press Break it.")
-         + '</div></div></div>')
-    show('<div class="how">'
-         '<div class="card"><b>1 · Break it</b><br><span>A chaos script kills or freezes Postgres or Redis, or ships a bad deploy, in a real Docker stack.</span></div>'
-         '<div class="card"><b>2 · Alert fires</b><br><span>Prometheus detects it, Alertmanager calls this agent through a webhook.</span></div>'
-         '<div class="card"><b>3 · Agents investigate</b><br><span>Specialists gather evidence in parallel; a reasoner proposes the cause; a critic checks it.</span></div>'
-         '</div>')
-    keep_live()
-    st.stop()
-
-if status == "queued":
-    left = max(0, int(inc.get("settle_until", 0) - time.time()))
-    show(f'<div class="banner b-settle"><div class="ico">🚨</div><div><div class="big">Outage detected · waiting {left}s for related alerts</div>'
-         '<div class="small">Other symptoms take a minute to show up; the agent waits so it sees the full picture.</div></div></div>')
-elif status == "running":
-    show('<div class="banner b-run"><div class="ico">🔎</div><div><div class="big">Agents investigating…</div>'
-         '<div class="small">Specialists are reading logs, metrics and deploys in parallel.</div></div></div>')
+if status == "idle":
+    show('<div class="banner">Everything is healthy. Choose a failure and press <b>Break now</b>.</div>')
+elif status == "breaking":
+    show(f'<div class="banner wait">{esc(FAILURE.get(running, running))} is live. Waiting for the monitoring to raise an alarm…</div>')
+elif status == "missed":
+    show('<div class="banner">The last break ended before any alarm went off, so there was nothing to investigate. Try another failure.</div>')
+elif status == "queued":
+    show('<div class="banner wait">Alarm received. Waiting a moment for related alarms, so the agents see the full picture…</div>')
 elif status == "failed":
-    show(f'<div class="banner b-fail"><div class="ico">❌</div><div><div class="big">Diagnosis failed</div><div class="small">{esc(inc.get("error"))}</div></div></div>')
-else:
-    h = inc["hypothesis"]
-    show(f'<div class="banner b-done"><div class="ico">✅</div><div><div class="big">Root cause found: <span class="cause-inline">{esc(h["cause"])}</span></div>'
-         f'<div class="small">in {inc["agent_s"]} s · {inc.get("llm_calls")} LLM calls · {len(inc["findings"])} pieces of evidence · {esc(h["confidence"])} confidence</div></div></div>')
+    show(f'<div class="banner bad">The investigation failed: {esc(inc.get("error"))}</div>')
 
-# ---------- timeline + verdict ----------
-left_col, right_col = st.columns([3, 2], gap="large")
-with left_col:
-    show('<div class="h">Investigation timeline</div>')
-    steps, seen = "", {e["node"] for e in trace}
-    for e in trace:                                                   # KEY: real order and timing from the LangGraph stream
-        icon, name = STEP.get(e["node"], ("•", e["node"]))
-        cls = "warn" if e["node"] == "llm" or (e["node"] == "critic" and not str(e["text"]).startswith("verdict → ok")) else \
-              "think" if e["node"] in ("correlator", "critic", "memory") else "done"
-        model = f'<span class="m">{esc(e["llm"])}</span>' if e.get("llm") else ('<span class="tag">no LLM</span>' if e["node"] in ("triage", "metrics_agent", "deploy_agent") else "")
-        steps += (f'<div class="step {cls}"><div class="ic">{icon}</div><div class="body"><div class="hd"><b>{esc(name)}</b>'
-                  f'<span class="tm">+{e["t"]:.1f}s</span>{model}</div><div class="tx">{one_liner(e)}</div></div></div>')
-    if status in ("queued", "running"):                               # steps not reached yet: greyed, the next one pulses
-        first = True
-        for n in ORDER:
-            if n in seen:
-                continue
-            icon, name = STEP[n]
-            cls = "run" if first and status == "running" else "todo"
-            first = False
-            steps += f'<div class="step {cls}"><div class="ic">{icon}</div><div class="body"><div class="hd"><b>{esc(name)}</b></div><div class="tx">waiting…</div></div></div>'
-    show(f'<div class="tl">{steps or "<div class=empty>No timeline for this incident.</div>"}</div>')
+# ---------- agent graph ----------
+seen = {e["node"] for e in (inc or {}).get("trace") or []}
 
-with right_col:
-    show('<div class="h">Verdict</div>')
-    if status != "done":
-        show('<div class="card"><div class="lbl">root cause</div><div class="cause unk">…</div><div class="summary">The verdict appears here when the critic approves it.</div></div>')
+
+def state_of(n: str) -> str:
+    if status in ("idle", "missed"):
+        return "idle"
+    if n in seen or status == "done":
+        return "done"
+    if status == "running" and all(p in seen for p in NEEDS[n]):
+        return "run"
+    return "todo"
+
+
+if "sel" not in st.session_state:
+    st.session_state.sel = None
+
+
+def node(n: str):
+    name, model, _ = NODES[n]
+    sel = "sel" if st.session_state.sel == n else "no"
+    if st.button(name, key=f"n_{state_of(n)}_{sel}_{n}", use_container_width=True):   # KEY: the key carries the colour state for the CSS
+        st.session_state.sel = None if st.session_state.sel == n else n
+        st.rerun()
+    if model:
+        show(f'<div class="model">{model}</div>')
+
+
+show('<div class="sec">How the agents worked</div>')
+g = st.columns([1, .18, 2.5, .18, 1.25, .18, 1, .18, 1], vertical_alignment="center")
+with g[0]:
+    node("triage")
+with g[1]:
+    show('<div class="arrow">→</div>')
+with g[2]:
+    with st.container(border=True):
+        show('<div class="par">run in parallel</div>')
+        node("logs_agent")
+        node("metrics_agent")
+        d1, d2, d3 = st.columns([1, .18, 1], vertical_alignment="center")
+        with d1:
+            node("deploy_agent")
+        with d2:
+            show('<div class="arrow">→</div>')
+        with d3:
+            node("diff_agent")
+with g[3]:
+    show('<div class="arrow">→</div>')
+with g[4]:
+    node("correlator")
+    show('<div class="arrow">↑</div>')
+    node("memory")
+with g[5]:
+    show('<div class="arrow">→</div>')
+with g[6]:
+    node("critic")
+    show('<div class="note">can send it back</div>')
+with g[7]:
+    show('<div class="arrow">→</div>')
+with g[8]:
+    node("reporter")
+
+pick = st.session_state.sel
+if pick:
+    name, _, what = NODES[pick]
+    if status == "done":
+        items = "".join(f"<li>{esc(a)}" + (f"<br><small>{esc(b)}</small>" if b else "") + "</li>" for a, b in node_lines(pick, inc)) or "<li>Nothing found</li>"
     else:
-        unk = " unk" if h["cause"] in ("insufficient_evidence", "other") else ""
-        ev = "".join(f"<li>{esc(x)}</li>" for x in (h.get("evidence") or [])[:4])
-        tries = inc.get("hypotheses") or []
-        rethink = (f'<div class="rethink">🔁 critic forced a rethink: {" → ".join(esc(x.get("cause")) for x in tries)}</div>' if len(tries) > 1
-                   and tries[0].get("cause") != tries[-1].get("cause") else "")
-        show(f'<div class="card"><div class="lbl">root cause<span class="badge c-{esc(h["confidence"])}">{esc(h["confidence"])}</span></div>'
-             f'<div class="cause{unk}">{esc(h["cause"])}</div><div class="summary">{esc(h["summary"])}</div><ul class="ev">{ev}</ul>{rethink}'
-             '<div class="stats">'
-             f'<div class="stat"><div class="k">time to diagnosis</div><div class="v">{inc["agent_s"]} s</div></div>'
-             f'<div class="stat"><div class="k">LLM calls</div><div class="v">{inc.get("llm_calls")}</div></div>'
-             f'<div class="stat"><div class="k">suspect deploy</div><div class="v">{esc(h.get("deploy_tag") or "none")}</div></div>'
-             f'<div class="stat"><div class="k">evidence</div><div class="v">{len(inc["findings"])}</div></div>'
-             '</div></div>')
+        items = "<li>Results appear here when the investigation finishes.</li>"
+    show(f'<div class="box"><h4>{name}</h4><div class="what">{what}</div><ul>{items}</ul></div>')
 
-# ---------- evidence ----------
+# ---------- verdict ----------
 if status == "done":
-    show('<div class="h">Evidence collected</div>')
-    SEV = {"high": 0, "medium": 1, "low": 2}
-    cols = st.columns(3, gap="medium")
-    for col, (title, sources) in zip(cols, [("📜 Logs", {"logs"}), ("📈 Metrics", {"metrics"}), ("🚀 Deploys & code", {"deploys", "diff"})]):
-        rows = sorted((f for f in inc["findings"] if f["source"] in sources), key=lambda f: SEV.get(f["severity"], 3))
-        cards = "".join(f'<div class="f {esc(f["severity"])}"><div class="s">{esc(human(f["signal"]))}</div><div class="d">{esc(f["detail"])}</div></div>' for f in rows)
-        with col:
-            show(f'<div class="colhead">{title}</div>' + (cards or '<div class="empty">nothing found</div>'))
-    with st.expander("📄 Full incident report"):
-        st.markdown((inc.get("report") or "").replace("\n", "  \n"))
-with st.expander("🔧 Raw Alertmanager payload"):
-    st.json(inc["payload"])
-
-keep_live()
+    h = inc["hypothesis"]
+    facts =
