@@ -146,7 +146,7 @@ def checkout(user_id: int, db: Session = Depends(get_db), r: redis.Redis = Depen
     if not products:
         logger.info("checkout rejected cart empty", extra={"user_id": user_id})  
         raise HTTPException(status_code=400, detail="Cart is empty")
-    total = sum(p.price * qty_by_id[p.id] for p in products) 
+    total = sum(p.price * qty_by_id[str(p.id)] for p in products) 
     order = models.Order(user_id=user_id, total=total)  
     db.add(order)  
     db.flush() 
